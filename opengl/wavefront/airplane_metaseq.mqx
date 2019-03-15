@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<MetasequoiaDocument>
+    <IncludedBy>airplane_metaseq.mqo</IncludedBy>
+    <Plugin.0A695FD7.82FE07FF name="vdrdlgMQ">
+        <model ver="10000">
+            <renderer width="300" height="300" backcol="128 128 128" />
+            <camera />
+            <lightsky />
+            <mtl ID="1" />
+            <mtl ID="2" />
+        </model>
+    </Plugin.0A695FD7.82FE07FF>
+</MetasequoiaDocument>
