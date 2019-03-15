@@ -6,14 +6,14 @@ Ruby + Gosu examples.
 Required library
 ----------------
 
-gem install gosu
-gem install opengl
+    gem install gosu
+    gem install opengl
 
 Optional library
 ----------------
 
-gem install glu
-gem install glut
+    gem install glu
+    gem install glut
 
 
 Gosuのゲームパッド対応状況について
@@ -21,7 +21,10 @@ Gosuのゲームパッド対応状況について
 
 Gusuはキーボード入力に加えてゲームパッド入力にも対応しているが、ゲームパッド入力に関しては注意点がある。
 
-Windows環境では利用できるUSBゲームパッド種類に制約がある。DirectInputタイプ(旧規格・安価)には非対応で、XInputタイプ(新規格・高価)にのみ対応してるように見えた。
+Windows環境では利用できるUSBゲームパッド種類に制約がある。
+
+- DirectInputタイプ(旧規格・安価)には非対応。
+- XInputタイプ(新規格・高価)にのみ対応。
 
 また、左右のアナログスティック・十字ボタンのどれを押しても8方向のデジタル入力として扱われる模様。
 
