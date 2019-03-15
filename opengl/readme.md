@@ -7,6 +7,8 @@ Ruby + gosu で OpenGL を動かすためには、opengl をインストール�
 
     gem install gosu
     gem install opengl
+    gem install glu
+    gem install glut
 
 
 opengl.rb は修正が必要
