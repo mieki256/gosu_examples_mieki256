@@ -7,11 +7,11 @@ Required library
 ----------------
 
     gem install gosu
-    gem install opengl
 
 Optional library
 ----------------
 
+    gem install opengl
     gem install glu
     gem install glut
 
