@@ -1,7 +1,7 @@
 <!-- -*- encoding: utf-8 -*- -->
 
-必要なパッケージ
-----------------
+動作に必要なパッケージ
+----------------------
 
 Ruby + gosu で OpenGL を動かすためには、opengl をインストールしないといけない。
 
@@ -10,13 +10,26 @@ Ruby + gosu で OpenGL を動かすためには、opengl をインストール�
     gem install glu
     gem install glut
 
+- [larskanis/opengl](https://github.com/larskanis/opengl)
+
+opengl-bindings を使う選択肢もある。
+
+    gem install opengl-bindings
+
+- [vaiorabbit/ruby-opengl](https://github.com/vaiorabbit/ruby-opengl)
+
+ただし、opengl を使った場合とは一部書き方が異なる。
+また、Windows上で glut や glfw を使う場合は、freeglut.dll と glfw3.dll が必要になる。
+
+- [GLFW - Download](https://www.glfw.org/download.html)
+- [freeglut Windows Development Libraries](https://www.transmissionzero.co.uk/software/freeglut-devel/)
+
 
 opengl.rb は修正が必要
 ----------------------
 
-[larskanis/opengl: The official repository of the ruby-opengl wrapper](https://github.com/larskanis/opengl)
-
-[invalid operation for glEnd - Issue #18 - larskanis/opengl](https://github.com/larskanis/opengl/issues/18)
+- [larskanis/opengl: The official repository of the ruby-opengl wrapper](https://github.com/larskanis/opengl)
+- [invalid operation for glEnd - Issue #18 - larskanis/opengl](https://github.com/larskanis/opengl/issues/18)
 
 
  opengl.rb は Windows上で動作させると一部でバグる。修正が必要。

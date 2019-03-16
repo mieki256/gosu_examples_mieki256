@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/15 02:51:10 +0900>
+# Last updated: <2019/03/17 02:47:07 +0900>
 #
 # gosu + opengl の動作確認
 # gosu-examplesの opengl_integration.rb を弄って、
@@ -12,7 +12,25 @@
 # https://github.com/gosu/gosu-examples/blob/master/examples/opengl_integration.rb
 
 require 'gosu'
+
+begin
+  # gem install opengl
 require 'gl'
+  include Gl
+  puts "load opengl"
+rescue LoadError
+  # gem install opengl-bindings
+  require 'opengl'
+  require 'glu'
+
+  OpenGL.load_lib
+  GLU.load_lib
+
+  include OpenGL
+  include GLU
+  puts "load opengl-bindings"
+end
+
 
 WIDTH, HEIGHT = 640, 480
 
@@ -45,10 +63,6 @@ class GLBackground
     Gosu.gl(z) { exec_gl }
   end
 
-  private
-
-  include Gl
-
   # Scrolling speed
   SCROLLS_PER_STEP = 15
 
@@ -75,12 +89,12 @@ class GLBackground
 
     glMatrixMode(GL_MODELVIEW)  # モデルビュー変換の指定
     glLoadIdentity
-    glTranslate(0, 0.0, -0.8)  # 位置をずらす
+    glTranslatef(0.0, 0.0, -0.8)  # 位置をずらす
 
     ry = 25.0 * Math.sin(@rot_v * Math::PI / 180.0)
-    glRotate(ry, 0.0, 1.0, 0.0) # 回転
+    glRotatef(ry, 0.0, 1.0, 0.0) # 回転
     rz = 20.0 * Math.sin(@rot_v2 * Math::PI / 180.0)
-    glRotate(rz, 0.0, 0.0, 1.0) # 回転
+    glRotatef(rz, 0.0, 0.0, 1.0) # 回転
 
     # スクロールオフセット値を得る
     offs_y = 1.0 * @scrolls / SCROLLS_PER_STEP
@@ -96,12 +110,13 @@ class GLBackground
     my = 1.2
     mz = 1.2
     ra = @rot_v * 4.0
-    lx = 28
+    # lx = 28
+    lx = 22
     0.upto(lx) do |bx|
       px0 = (-0.5 + (bx - 0.0 - offs_y) / lx) * mx
       px1 = (-0.5 + (bx + 0.6 - offs_y) / lx) * mx
 
-      aa = 15
+      aa = 20
       0.step(360, aa) do |ang|
         rad0 = (ang + ra) * Math::PI / 180.0
         pz0 = Math.cos(rad0) * mz

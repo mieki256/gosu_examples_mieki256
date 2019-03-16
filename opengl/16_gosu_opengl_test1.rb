@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/15 02:51:16 +0900>
+# Last updated: <2019/03/17 02:57:07 +0900>
 #
 # gosu + opengl の動作確認
 # gosu-examplesの opengl_integration.rb を弄って、
@@ -12,7 +12,25 @@
 # https://github.com/gosu/gosu-examples/blob/master/examples/opengl_integration.rb
 
 require 'gosu'
+
+begin
+  # gem install opengl
 require 'gl'
+  include Gl
+  puts "load opengl"
+rescue LoadError
+  # gem install opengl-bindings
+  require 'opengl'
+  require 'glu'
+
+  OpenGL.load_lib
+  GLU.load_lib
+
+  include OpenGL
+  include GLU
+  puts "load opengl-bindings"
+end
+
 
 WIDTH, HEIGHT = 640, 480
 
@@ -49,10 +67,6 @@ class GLBackground
     Gosu.gl(z) { exec_gl }
   end
 
-  private
-
-  include Gl
-
   # OpenGL関係の処理
   def exec_gl
     glClearColor(0.2, 0.2, 0.2, 1.0)  # 画面クリア色を指定 (r,g,b,a)
@@ -73,12 +87,12 @@ class GLBackground
     glMatrixMode(GL_PROJECTION)  # 透視投影の設定
     glLoadIdentity
     # glFrustum(-0.10, 0.10, -0.075, 0.075, 1, 100)
-    glFrustum(-0.04, 0.04, -0.075, 0.075, 0.1, 100)
+    glFrustum(-0.035, 0.035, -0.075, 0.075, 0.1, 100)
 
     glMatrixMode(GL_MODELVIEW)  # モデルビュー変換の指定
     glLoadIdentity
-    glRotate(35.0, 1.0, 0.0, 0.0) # 回転させる (ang, x, y, z)
-    glTranslate(0, -0.35, -0.8)  # 位置をずらす
+    glRotatef(35.0, 1.0, 0.0, 0.0) # 回転させる (ang, x, y, z)
+    glTranslatef(0.0, -0.35, -0.8)  # 位置をずらす
 
     glEnable(GL_TEXTURE_2D)  # テクスチャマッピングを有効化
     glBindTexture(GL_TEXTURE_2D, info.tex_name)
