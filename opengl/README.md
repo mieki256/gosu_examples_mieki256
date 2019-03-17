@@ -69,7 +69,7 @@ Screenshot
 ruby 01_gosu_opengl_11.rb
 ```
 
-![01_gosu_opengl_11.rb](./screenshot\01_gosu_opengl_11.png)
+![01_gosu_opengl_11.rb](./screenshot/01_gosu_opengl_11.png)
 
 ```bash
 ruby 16_gosu_opengl_test1.rb
