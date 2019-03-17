@@ -1,11 +1,19 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/15 02:53:39 +0900>
+# Last updated: <2019/03/17 21:12:34 +0900>
 #
 # Ruby + gosu + opengl の動作確認
 # gosu-examples の opengl_integration.rb を弄ってOpenGL絡みの部分だけを列挙
 #
 # OpenGL 1.5風、VBOを使って書いてみるテスト
+#
+# == Require
+#
+# gem install gosu opengl
+# or
+# gem install gosu opengl-bindings
+#
+# == References
 #
 # 算譜記録帳: OpenGLでの頂点データの扱いの変化
 # http://mklearning.blogspot.com/2014/08/opengl.html
@@ -15,17 +23,41 @@
 # https://github.com/gosu/gosu-examples/blob/master/examples/opengl_integration.rb
 
 require 'gosu'
-require 'gl'
 
-DATA_KIND = 1   # 0 : 三角形を描画 , 1 : cubeを描画
+$glbind = false
+
+begin
+  # gem install opengl
+  require 'gl'
+  include Gl
+  puts "load opengl"
+  $glbind = false
+rescue LoadError
+  # gem install opengl-bindings
+  require 'opengl'
+  OpenGL.load_lib
+  include OpenGL
+  puts "load opengl-bindings"
+  $glbind = true
+end
+
+# 0 : 三角形を描画 , 1 : cubeを描画
+DATA_KIND = 1
 
 TEX_FILE = "res/UVCheckerMap01-1024.png"
 WIDTH, HEIGHT = 640, 480
 
-LIGHT_POS = [1.0, 2.0, 4.0]            # 位置
+# Light
+# LIGHT_POS = [1.0, 2.0, 4.0]            # 位置
+LIGHT_POS = [1.0, 2.0, 4.0, 0.0]       # 位置
 LIGHT_AMBIENT = [0.5, 0.5, 0.5, 1.0]   # 環境光
 LIGHT_DIFFUSE = [1.0, 1.0, 1.0, 1.0]   # 拡散光
 LIGHT_SPECULAR = [1.0, 1.0, 1.0, 1.0]  # 鏡面光
+
+LIGHT_POS_PACK = LIGHT_POS.pack("f*")
+LIGHT_AMBIENT_PACK = LIGHT_AMBIENT.pack("f*")
+LIGHT_DIFFUSE_PACK = LIGHT_DIFFUSE.pack("f*")
+LIGHT_SPECULAR_PACK = LIGHT_SPECULAR.pack("f*")
 
 class GlObj
 
@@ -71,27 +103,43 @@ class GlObj
     ]
 
     # VBO作成
-    @buffers = glGenBuffers(2)  # 頂点用と法線用の2つのバッファを生成
+    unless $glbind
+      # opengl
+      @buffers = glGenBuffers(2)  # 頂点用と法線用の2つのバッファを生成
 
-    # 頂点群
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # バッファの種類を設定
-    vtx = @vtx_a.pack("f*")  # データはpackして渡すらしい
-    glBufferData(
-                 GL_ARRAY_BUFFER,
-                 vtx.size,          # データ群の長さ
-                 vtx,               # データ群。packして渡すらしい
-                 GL_STATIC_DRAW
-                 )
+      # 頂点群
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # バッファの種類を設定
+      vtx = @vtx_a.pack("f*")  # データはpackして渡すらしい
+      glBufferData(
+        GL_ARRAY_BUFFER,
+        vtx.size,          # データ群の長さ
+        vtx,               # データ群。packして渡すらしい
+        GL_STATIC_DRAW
+      )
 
-    # 法線群
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
-    nml = @nml_a.pack("f*")
-    glBufferData(
-                 GL_ARRAY_BUFFER,
-                 nml.size,          # データ群の長さ
-                 nml,               # データ群
-                 GL_STATIC_DRAW
-                 )
+      # 法線群
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
+      nml = @nml_a.pack("f*")
+      glBufferData(
+        GL_ARRAY_BUFFER,
+        nml.size,          # データ群の長さ
+        nml,               # データ群
+        GL_STATIC_DRAW
+      )
+    else
+      # opengl-bindings
+      @buffers = ' ' * (4 * 2)
+      glGenBuffers(2, @buffers)
+
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L2')[0])
+      vtx = @vtx_a.pack("f*")
+      glBufferData(GL_ARRAY_BUFFER, vtx.size, vtx, GL_STATIC_DRAW)
+
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L2')[1])
+      nml = @nml_a.pack("f*")
+      glBufferData(GL_ARRAY_BUFFER, nml.size, nml, GL_STATIC_DRAW)
+    end
+
   end
 
   # cubeデータで初期化
@@ -191,29 +239,52 @@ class GlObj
     ]
 
     # VBOを作成
+    unless $glbind
+      # opengl
+      # 頂点、法線、uv、インデックス用に、4つのバッファを生成
+      @buffers = glGenBuffers(4)
 
-    # 頂点、法線、uv、インデックス用に、4つのバッファを生成
-    @buffers = glGenBuffers(4)
+      # 頂点群
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # バッファの種類を設定
+      vtx = @vtx_b.pack("f*")
+      glBufferData(GL_ARRAY_BUFFER, vtx.size, vtx, GL_STATIC_DRAW)
 
-    # 頂点群
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # バッファの種類を設定
-    vtx = @vtx_b.pack("f*")
-    glBufferData(GL_ARRAY_BUFFER, vtx.size, vtx, GL_STATIC_DRAW)
+      # 法線群
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
+      nml = @nml_b.pack("f*")
+      glBufferData(GL_ARRAY_BUFFER, nml.size, nml, GL_STATIC_DRAW)
 
-    # 法線群
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
-    nml = @nml_b.pack("f*")
-    glBufferData(GL_ARRAY_BUFFER, nml.size, nml, GL_STATIC_DRAW)
+      # uv群
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[2])
+      uv = @uvs_b.pack("f*")
+      glBufferData(GL_ARRAY_BUFFER, uv.size, uv, GL_STATIC_DRAW)
 
-    # uv群
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[2])
-    uv = @uvs_b.pack("f*")
-    glBufferData(GL_ARRAY_BUFFER, uv.size, uv, GL_STATIC_DRAW)
+      # インデックス群。他と違って GL_ELEMENT_ARRAY_BUFFER を指定してることに注意
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers[3])
+      face = @face_b.pack("S*")
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, face.size, face, GL_STATIC_DRAW)
+    else
+      # opengl-bindings
+      @buffers = ' ' * (4 * 4)
+      glGenBuffers(4, @buffers)
 
-    # インデックス群。他と違って GL_ELEMENT_ARRAY_BUFFER を指定してることに注意
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers[3])
-    face = @face_b.pack("S*")
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, face.size, face, GL_STATIC_DRAW)
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[0])
+      vtx = @vtx_b.pack("f*")
+      glBufferData(GL_ARRAY_BUFFER, vtx.size, vtx, GL_STATIC_DRAW)
+
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[1])
+      nml = @nml_b.pack("f*")
+      glBufferData(GL_ARRAY_BUFFER, nml.size, nml, GL_STATIC_DRAW)
+
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[2])
+      uv = @uvs_b.pack("f*")
+      glBufferData(GL_ARRAY_BUFFER, uv.size, uv, GL_STATIC_DRAW)
+
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers.unpack('L4')[3])
+      face = @face_b.pack("S*")
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, face.size, face, GL_STATIC_DRAW)
+    end
+
   end
 
   def dispose_buffers
@@ -224,7 +295,7 @@ class GlObj
   # 更新処理
   def update
     @rot_y = (@rot_y + 1.0) % 360.0
-    # @rot_x = (@rot_x + 2.0) % 360.0
+    @rot_x = (@rot_x + 0.25) % 360.0
   end
 
   # 描画処理
@@ -233,10 +304,6 @@ class GlObj
     # 描画後、Gosuの描画ができるようにしてくれるらしい
     Gosu.gl(z) { exec_gl }
   end
-
-  private
-
-  include Gl
 
   # OpenGL関係の処理
   def exec_gl
@@ -255,13 +322,22 @@ class GlObj
     # glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST)
 
     # ライト設定. GL_LIGHT0 に対して設定
-    glLight(GL_LIGHT0, GL_POSITION, LIGHT_POS)
-    glLight(GL_LIGHT0, GL_AMBIENT, LIGHT_AMBIENT)
-    glLight(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIFFUSE)
-    glLight(GL_LIGHT0, GL_SPECULAR, LIGHT_SPECULAR)
+    unless $glbind
+      # opengl
+      glLight(GL_LIGHT0, GL_AMBIENT, LIGHT_AMBIENT)
+      glLight(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIFFUSE)
+      glLight(GL_LIGHT0, GL_SPECULAR, LIGHT_SPECULAR)
+      glLight(GL_LIGHT0, GL_POSITION, LIGHT_POS)
+    else
+      # opengl-bindings
+      glLightfv(GL_LIGHT0, GL_AMBIENT, LIGHT_AMBIENT_PACK)
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIFFUSE_PACK)
+      glLightfv(GL_LIGHT0, GL_SPECULAR, LIGHT_SPECULAR_PACK)
+      glLightfv(GL_LIGHT0, GL_POSITION, LIGHT_POS_PACK)
+    end
 
     glEnable(GL_LIGHTING)    # ライティングを有効化
-    glEnable(GL_LIGHT0)    # GL_LIGHT0 を有効化
+    glEnable(GL_LIGHT0)      # GL_LIGHT0 を有効化
 
     glMatrixMode(GL_PROJECTION)  # 透視投影の設定
     glLoadIdentity
@@ -270,11 +346,16 @@ class GlObj
     glMatrixMode(GL_MODELVIEW)  # モデルビュー変換の指定
     glLoadIdentity
 
-    # 位置をずらす
-    glTranslate(@trans_pos[:x], @trans_pos[:y], @trans_pos[:z])
-
-    glRotate(@rot_x, 1.0, 0.0, 0.0) # 回転
-    glRotate(@rot_y, 0.0, 1.0, 0.0) # 回転
+    unless $glbind
+      # 位置をずらす
+      glTranslate(@trans_pos[:x], @trans_pos[:y], @trans_pos[:z])
+      glRotate(@rot_x, 1.0, 0.0, 0.0) # x軸で回転
+      glRotate(@rot_y, 0.0, 1.0, 0.0) # y軸で回転
+    else
+      glTranslatef(@trans_pos[:x], @trans_pos[:y], @trans_pos[:z])
+      glRotatef(@rot_x, 1.0, 0.0, 0.0)
+      glRotatef(@rot_y, 0.0, 1.0, 0.0)
+    end
 
     case DATA_KIND
     when 0
@@ -292,30 +373,42 @@ class GlObj
     glEnableClientState(GL_VERTEX_ARRAY)  # 頂点配列を有効化
     glEnableClientState(GL_NORMAL_ARRAY)  # 法線配列を有効化
 
-    # 頂点配列を関連付け
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])
-    glVertexPointer(
-                    3,  # size. 1頂点に値をいくつ使うか。x,yなら2 x,y,zなら3
-                    GL_FLOAT,    # 値の型
-                    0,           # stride. データの間隔。詰まってるなら0
-                    0            # バッファオフセット
-                    )
+    unless $glbind
+      # opengl
+      # 頂点配列を関連付け
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])
+      glVertexPointer(
+        3,  # size. 1頂点に値をいくつ使うか。x,yなら2 x,y,zなら3
+        GL_FLOAT,    # 値の型
+        0,           # stride. データの間隔。詰まってるなら0
+        0            # バッファオフセット
+      )
 
-    # 法線配列を関連付け
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
-    glNormalPointer(
-                    # size. 法線は必ずx,y,zを渡すので指定しなくていい
-                    GL_FLOAT,    # 値の型
-                    0,           # stride. データの間隔。詰まってるなら0
-                    0            # バッファオフセット
-                    )
+      # 法線配列を関連付け
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
+      glNormalPointer(
+        # size. 法線は必ずx,y,zを渡すので指定しなくていい
+        GL_FLOAT,    # 値の型
+        0,           # stride. データの間隔。詰まってるなら0
+        0            # バッファオフセット
+      )
 
-    # 描画
-    glDrawArrays(
-                 GL_TRIANGLE_STRIP,  # プリミティブの種類
-                 0,                  # スタート地点
-                 3                   # 頂点数
-                 )
+      # 描画
+      glDrawArrays(
+        GL_TRIANGLE_STRIP,  # プリミティブの種類
+        0,                  # スタート地点
+        3                   # 頂点数
+      )
+    else
+      # opengl-bindings
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L2')[0])
+      glVertexPointer(3, GL_FLOAT, 0, 0)
+
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L2')[1])
+      glNormalPointer(GL_FLOAT, 0, 0)
+
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 3)
+    end
 
     # バッファを削除
     # glDeleteBuffers(@buffers)
@@ -328,33 +421,55 @@ class GlObj
     glEnableClientState(GL_NORMAL_ARRAY)         # 法線配列を有効化
     glEnableClientState(GL_TEXTURE_COORD_ARRAY)  # uv配列を有効化
 
-    # 頂点配列を関連付け
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])
-    glVertexPointer(3, GL_FLOAT, 0, 0)
+    unless $glbind
+      # opengl
+      # 頂点配列を関連付け
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])
+      glVertexPointer(3, GL_FLOAT, 0, 0)
 
-    # 法線配列を関連付け
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
-    glNormalPointer(GL_FLOAT, 0, 0)
+      # 法線配列を関連付け
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
+      glNormalPointer(GL_FLOAT, 0, 0)
 
-    # uv配列を関連付け
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[2])
-    glTexCoordPointer(2, GL_FLOAT, 0, 0)
+      # uv配列を関連付け
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[2])
+      glTexCoordPointer(2, GL_FLOAT, 0, 0)
 
-    # インデックス配列を関連付け
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers[3])
+      # インデックス配列を関連付け
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers[3])
 
-    glEnable(GL_TEXTURE_2D)                          # テクスチャ有効化
-    glBindTexture(GL_TEXTURE_2D, @texinfo.tex_name)  # テクスチャ割り当て
+      glEnable(GL_TEXTURE_2D)                          # テクスチャ有効化
+      glBindTexture(GL_TEXTURE_2D, @texinfo.tex_name)  # テクスチャ割り当て
 
-    # 描画
-    glDrawElements(
-                   GL_QUADS,              # プリミティブ種類
-                   @face_b.size,          # インデックスの個数
-                   GL_UNSIGNED_SHORT,     # インデックスの型
-                   0                      # バッファオフセット
-                   )
+      # 描画
+      glDrawElements(
+        GL_QUADS,              # プリミティブ種類
+        @face_b.size,          # インデックスの個数
+        GL_UNSIGNED_SHORT,     # インデックスの型
+        0                      # バッファオフセット
+      )
 
-    glDisable(GL_TEXTURE_2D)  # テクスチャ無効化
+      glDisable(GL_TEXTURE_2D)  # テクスチャ無効化
+    else
+      # opengl-bindings
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[0])
+      glVertexPointer(3, GL_FLOAT, 0, 0)
+
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[1])
+      glNormalPointer(GL_FLOAT, 0, 0)
+
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[2])
+      glTexCoordPointer(2, GL_FLOAT, 0, 0)
+
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers.unpack('L4')[3])
+
+      glEnable(GL_TEXTURE_2D)
+      glBindTexture(GL_TEXTURE_2D, @texinfo.tex_name)
+
+      glDrawElements(GL_QUADS, @face_b.size, GL_UNSIGNED_SHORT, 0)
+
+      glDisable(GL_TEXTURE_2D)
+    end
 
     # 頂点配列、法線配列、uv配列を無効化
     glDisableClientState(GL_VERTEX_ARRAY)
@@ -366,32 +481,27 @@ class GlObj
   end
 end
 
-# メインクラス
+# Gosu main window class
 class MyWindow < Gosu::Window
 
-  # 初期化
   def initialize
     super WIDTH, HEIGHT
     self.caption = "Ruby + Gosu + OpenGL, VBO"
     @gl_obj = GlObj.new(0.0, 0.0, -2.0)
   end
 
-  # 更新
   def update
     @gl_obj.update
   end
 
-  # 描画
   def draw
     z = 0
     @gl_obj.draw(z)
   end
 
   def button_down(id)
-    # ESCが押されたら終了
-    if id == Gosu::KbEscape
-      close
-    end
+    # ESC : close window and exit
+    close if id == Gosu::KbEscape
   end
 end
 

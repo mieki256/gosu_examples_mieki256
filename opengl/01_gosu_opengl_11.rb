@@ -1,11 +1,19 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/15 02:53:44 +0900>
+# Last updated: <2019/03/17 21:13:12 +0900>
 #
 # Ruby + gosu + opengl の動作確認
 # gosu-examples の opengl_integration.rb を弄ってOpenGL絡みの部分だけを列挙
 #
 # OpenGL 1.1風、頂点配列を使って書いてみるテスト
+#
+# == Require
+#
+# gem install gosu opengl
+# or
+# gem install gosu opengl-bindings
+#
+# == References
 #
 # 算譜記録帳: OpenGLでの頂点データの扱いの変化
 # http://mklearning.blogspot.com/2014/08/opengl.html
@@ -15,17 +23,41 @@
 # https://github.com/gosu/gosu-examples/blob/master/examples/opengl_integration.rb
 
 require 'gosu'
-require 'gl'
 
-DATA_KIND = 1   # 0 : 三角形を描画 , 1 : cubeを描画
+$glbind = false
+
+begin
+  # gem install opengl
+  require 'gl'
+  include Gl
+  puts "load opengl"
+  $glbind = false
+rescue LoadError
+  # gem install opengl-bindings
+  require 'opengl'
+  OpenGL.load_lib
+  include OpenGL
+  puts "load opengl-bindings"
+  $glbind = true
+end
+
+# 0 : 三角形を描画 , 1 : cubeを描画
+DATA_KIND = 1
 
 TEX_FILE = "res/UVCheckerMap01-1024.png"
 WIDTH, HEIGHT = 640, 480
 
-LIGHT_POS = [1.0, 2.0, 4.0]            # 位置
+# Light
+# LIGHT_POS = [1.0, 2.0, 4.0]            # 位置
+LIGHT_POS = [1.0, 2.0, 4.0, 0.0]       # 位置
 LIGHT_AMBIENT = [0.5, 0.5, 0.5, 1.0]   # 環境光
 LIGHT_DIFFUSE = [1.0, 1.0, 1.0, 1.0]   # 拡散光
 LIGHT_SPECULAR = [1.0, 1.0, 1.0, 1.0]  # 鏡面光
+
+LIGHT_POS_PACK = LIGHT_POS.pack("f*")
+LIGHT_AMBIENT_PACK = LIGHT_AMBIENT.pack("f*")
+LIGHT_DIFFUSE_PACK = LIGHT_DIFFUSE.pack("f*")
+LIGHT_SPECULAR_PACK = LIGHT_SPECULAR.pack("f*")
 
 class GlObj
 
@@ -57,24 +89,27 @@ class GlObj
   # 三角形のデータで初期化
   def init_triangle
     # 三角形用の頂点群
-    @vertexs_a = [
+    @vtx_a = [
       -1.0, -1.0, 0.0,
       1.0, -1.0, 0.0,
       0.0, 1.0, 0.0,
     ]
 
     # 三角形用の法線群
-    @normals_a = [
+    @nml_a = [
       0.0, 0.0, 1.0,
       0.0, 0.0, 1.0,
       0.0, 0.0, 1.0,
     ]
+
+    @vtx_a_pack = @vtx_a.pack("f*")
+    @nml_a_pack = @nml_a.pack("f*")
   end
 
   # cubeデータで初期化
   def init_cube
     # cube用の頂点群
-    @vertexs_b = [
+    @vtx_b = [
       -0.75, -0.75, 0.75,  # 0
       -0.75, 0.75, 0.75,  # 1
       -0.75, 0.75, -0.75,  # 2
@@ -130,7 +165,7 @@ class GlObj
     ]
 
     # cube用の法線群
-    @normals_b = [
+    @nml_b = [
       -1.0, 0.0, 0.0,  # 0
       -1.0, 0.0, 0.0,  # 1
       -1.0, 0.0, 0.0,  # 2
@@ -158,7 +193,7 @@ class GlObj
     ]
 
     # cube用のインデックス群
-    @indices_b = [
+    @face_b = [
       0, 1, 2, 3,
       4, 5, 6, 7,
       8, 9, 10, 11,
@@ -166,12 +201,17 @@ class GlObj
       16, 17, 18, 19,
       20, 21, 22, 23,
     ]
+
+    @vtx_b_pack = @vtx_b.pack("f*")
+    @uvs_b_pack = @uvs_b.pack("f*")
+    @nml_b_pack = @nml_b.pack("f*")
+    @face_b_pack = @face_b.pack("S*")
   end
 
   # 更新処理
   def update
     @rot_y = (@rot_y + 1.0) % 360.0
-    # @rot_x = (@rot_x + 2.0) % 360.0
+    @rot_x = (@rot_x + 0.25) % 360.0
   end
 
   # 描画処理
@@ -180,10 +220,6 @@ class GlObj
     # 描画後、Gosuの描画ができるようにしてくれるらしい
     Gosu.gl(z) { exec_gl }
   end
-
-  private
-
-  include Gl
 
   # OpenGL関係の処理
   def exec_gl
@@ -202,13 +238,22 @@ class GlObj
     # glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST)
 
     # ライト設定. GL_LIGHT0 に対して設定
-    glLight(GL_LIGHT0, GL_POSITION, LIGHT_POS)
-    glLight(GL_LIGHT0, GL_AMBIENT, LIGHT_AMBIENT)
-    glLight(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIFFUSE)
-    glLight(GL_LIGHT0, GL_SPECULAR, LIGHT_SPECULAR)
+    unless $glbind
+      # opengl
+      glLight(GL_LIGHT0, GL_POSITION, LIGHT_POS)
+      glLight(GL_LIGHT0, GL_AMBIENT, LIGHT_AMBIENT)
+      glLight(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIFFUSE)
+      glLight(GL_LIGHT0, GL_SPECULAR, LIGHT_SPECULAR)
+    else
+      # opengl-bindings
+      glLightfv(GL_LIGHT0, GL_POSITION, LIGHT_POS_PACK)
+      glLightfv(GL_LIGHT0, GL_AMBIENT, LIGHT_AMBIENT_PACK)
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIFFUSE_PACK)
+      glLightfv(GL_LIGHT0, GL_SPECULAR, LIGHT_SPECULAR_PACK)
+    end
 
     glEnable(GL_LIGHTING)    # ライティングを有効化
-    glEnable(GL_LIGHT0)    # GL_LIGHT0 を有効化
+    glEnable(GL_LIGHT0)      # GL_LIGHT0 を有効化
 
     glMatrixMode(GL_PROJECTION)  # 透視投影の設定
     glLoadIdentity
@@ -217,11 +262,17 @@ class GlObj
     glMatrixMode(GL_MODELVIEW)  # モデルビュー変換の指定
     glLoadIdentity
 
-    # 位置をずらす
-    glTranslate(@trans_pos[:x], @trans_pos[:y], @trans_pos[:z])
+    unless $glbind
+      # 位置をずらす
+      glTranslate(@trans_pos[:x], @trans_pos[:y], @trans_pos[:z])
 
-    glRotate(@rot_x, 1.0, 0.0, 0.0) # 回転
-    glRotate(@rot_y, 0.0, 1.0, 0.0) # 回転
+      glRotate(@rot_x, 1.0, 0.0, 0.0) # x軸で回転
+      glRotate(@rot_y, 0.0, 1.0, 0.0) # y軸で回転
+    else
+      glTranslatef(@trans_pos[:x], @trans_pos[:y], @trans_pos[:z])
+      glRotatef(@rot_x, 1.0, 0.0, 0.0)
+      glRotatef(@rot_y, 0.0, 1.0, 0.0)
+    end
 
     case DATA_KIND
     when 0
@@ -238,28 +289,37 @@ class GlObj
     glEnableClientState(GL_VERTEX_ARRAY)  # 頂点配列を有効化
     glEnableClientState(GL_NORMAL_ARRAY)  # 法線配列を有効化
 
-    # 頂点配列の指定
-    glVertexPointer(
-                    3,  # size. 1頂点に値をいくつ使うか。x,yなら2 x,y,zなら3
-                    GL_FLOAT,    # 値の型
-                    0,           # stride. データの間隔。詰まってるなら0
-                    @vertexs_a   # 頂点データが入った配列
-                    )
+    unless $glbind
+      # opengl
+      # 頂点配列の指定
+      glVertexPointer(
+        3,  # size. 1頂点に値をいくつ使うか。x,yなら2 x,y,zなら3
+        GL_FLOAT,    # 値の型
+        0,           # stride. データの間隔。詰まってるなら0
+        @vtx_a   # 頂点データが入った配列
+      )
 
-    # 法線配列の指定
-    # 法線は1頂点につき必ずx,y,zの3値を持っているのでsize指定は不要
-    glNormalPointer(
-                    GL_FLOAT,    # 値の型
-                    0,           # stride
-                    @normals_a   # 法線データが入った配列
-                    )
+      # 法線配列の指定
+      # 法線は1頂点につき必ずx,y,zの3値を持っているのでsize指定は不要
+      glNormalPointer(
+        GL_FLOAT,    # 値の型
+        0,           # stride
+        @nml_a   # 法線データが入った配列
+      )
 
-    # 頂点群を渡して描画. glDrawArrays を使う
-    glDrawArrays(
-                 GL_TRIANGLE_STRIP,  # プリミティブの種類
-                 0,                  # スタート地点
-                 3                   # 頂点数
-                 )
+      # 頂点群を渡して描画. glDrawArrays を使う
+      glDrawArrays(
+        GL_TRIANGLE_STRIP,  # プリミティブの種類
+        0,                  # スタート地点
+        3                   # 頂点数
+      )
+    else
+      # opengl-bindings
+      glVertexPointer(3, GL_FLOAT, 0, @vtx_a_pack)
+      glNormalPointer(GL_FLOAT, 0, @nml_a_pack)
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 3)
+    end
+
 
     glDisableClientState(GL_VERTEX_ARRAY)  # 頂点配列を無効化
     glDisableClientState(GL_NORMAL_ARRAY)  # 法線配列を無効化
@@ -271,23 +331,40 @@ class GlObj
     glEnableClientState(GL_NORMAL_ARRAY)         # 法線配列を有効化
     glEnableClientState(GL_TEXTURE_COORD_ARRAY)  # uv配列を有効化
 
-    glVertexPointer(3, GL_FLOAT, 0, @vertexs_b)  # 頂点配列の指定
-    glNormalPointer(GL_FLOAT, 0, @normals_b)     # 法線配列の指定
-    glTexCoordPointer(2, GL_FLOAT, 0, @uvs_b)    # uv配列の指定
+    unless $glbind
+      # opengl
+      glVertexPointer(3, GL_FLOAT, 0, @vtx_b)  # 頂点配列の指定
+      glNormalPointer(GL_FLOAT, 0, @nml_b)     # 法線配列の指定
+      glTexCoordPointer(2, GL_FLOAT, 0, @uvs_b)    # uv配列の指定
 
-    glEnable(GL_TEXTURE_2D)            # テクスチャ有効化
-    id = @texinfo.tex_name
-    glBindTexture(GL_TEXTURE_2D, id)   # テクスチャ割り当て
+      glEnable(GL_TEXTURE_2D)            # テクスチャ有効化
+      id = @texinfo.tex_name
+      glBindTexture(GL_TEXTURE_2D, id)   # テクスチャ割り当て
 
-    # インデックス配列を渡して描画. glDrawElements を使う
-    glDrawElements(
-                   GL_QUADS,           # プリミティブ種類
-                   @indices_b.size,    # インデックス数
-                   GL_UNSIGNED_SHORT,  # インデックスの型
-                   @indices_b          # 頂点インデックスの配列
-                   )
+      # インデックス配列を渡して描画. glDrawElements を使う
+      glDrawElements(
+        GL_QUADS,           # プリミティブ種類
+        @face_b.size,    # インデックス数
+        GL_UNSIGNED_SHORT,  # インデックスの型
+        @face_b          # 頂点インデックスの配列
+      )
 
-    glDisable(GL_TEXTURE_2D)           # テクスチャ無効化
+      glDisable(GL_TEXTURE_2D)           # テクスチャ無効化
+    else
+      # opengl-bindings
+      glVertexPointer(3, GL_FLOAT, 0, @vtx_b_pack)
+      glNormalPointer(GL_FLOAT, 0, @nml_b_pack)
+      glTexCoordPointer(2, GL_FLOAT, 0, @uvs_b_pack)
+
+      glEnable(GL_TEXTURE_2D)
+      id = @texinfo.tex_name
+      glBindTexture(GL_TEXTURE_2D, id)
+
+      glDrawElements(GL_QUADS, @face_b.size,
+                     GL_UNSIGNED_SHORT, @face_b_pack)
+
+      glDisable(GL_TEXTURE_2D)
+    end
 
     # 頂点配列、法線配列、uv配列を無効化
     glDisableClientState(GL_VERTEX_ARRAY)
@@ -296,29 +373,26 @@ class GlObj
   end
 end
 
-# メインクラス
+# Gosu main window class
 class MyWindow < Gosu::Window
 
-  # 初期化
   def initialize
     super WIDTH, HEIGHT
     self.caption = "Ruby + Gosu + OpenGL, Vertex Array"
     @gl_obj = GlObj.new(0.0, 0.0, -2.0)
   end
 
-  # 更新
   def update
     @gl_obj.update
   end
 
-  # 描画
   def draw
     z = 0
     @gl_obj.draw(z)
   end
 
   def button_down(id)
-    # ESCが押されたら終了
+    # ESC : close window and exit
     close if id == Gosu::KbEscape
   end
 end
