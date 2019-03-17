@@ -54,5 +54,18 @@ implementation.send の前や後ろに、begin/rescue を挿入。
       end
     end
 
+Screenshot
+----------
 
+- 01_gosu_opengl_11.rb
+![01_gosu_opengl_11.rb](./screenshot\01_gosu_opengl_11.png)
+
+- 16_gosu_opengl_test1.rb
+![16_gosu_opengl_test1.rb](./screenshot/16_gosu_opengl_test1_ss.png)
+
+- 17_gosu_opengl_test2.rb
+![17_gosu_opengl_test2.rb](./screenshot/17_gosu_opengl_test2_ss.png)
+
+- opengl_glut_only_test.rb
+![opengl_glut_only_test.rb](./screenshot/opengl_glut_only_test_ss.png)
 
