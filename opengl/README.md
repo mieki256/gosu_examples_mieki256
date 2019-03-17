@@ -37,7 +37,7 @@ opengl.rb は修正が必要
 * [larskanis/opengl: The official repository of the ruby-opengl wrapper](https://github.com/larskanis/opengl)
 * [invalid operation for glEnd - Issue #18 - larskanis/opengl](https://github.com/larskanis/opengl/issues/18)
 
-  opengl.rb は Windows上で動作させると一部でバグる。修正が必要。
+opengl.rb は Windows上で動作させると一部でバグる。修正が必要。
 
 opengl.rb を開く。
 
@@ -71,17 +71,23 @@ ruby 01_gosu_opengl_11.rb
 
 ![01_gosu_opengl_11.rb](./screenshot/01_gosu_opengl_11.png)
 
+* * *
+
 ```bash
 ruby 16_gosu_opengl_test1.rb
 ```
 
 ![16_gosu_opengl_test1.rb](./screenshot/16_gosu_opengl_test1_ss.png)
 
+* * *
+
 ```bash
 ruby 17_gosu_opengl_test2.rb
 ```
 
 ![17_gosu_opengl_test2.rb](./screenshot/17_gosu_opengl_test2_ss.png)
+
+* * *
 
 ```bash
 ruby opengl_glut_only_test.rb
