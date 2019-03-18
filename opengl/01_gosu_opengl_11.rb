@@ -320,7 +320,6 @@ class GlObj
       glDrawArrays(GL_TRIANGLE_STRIP, 0, 3)
     end
 
-
     glDisableClientState(GL_VERTEX_ARRAY)  # 頂点配列を無効化
     glDisableClientState(GL_NORMAL_ARRAY)  # 法線配列を無効化
   end

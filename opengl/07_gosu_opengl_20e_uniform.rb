@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/15 02:53:07 +0900>
+# Last updated: <2019/03/18 06:48:37 +0900>
 #
 # Ruby + gosu + opengl の動作確認
 # gosu-examples の opengl_integration.rb を弄ってOpenGL絡みの部分だけを列挙
@@ -9,6 +9,14 @@
 # GLSLでシェーダを書いて、三角形をVBOで描画しつつ、頂点カラーも付加するテスト
 # 頂点配列中に頂点カラー情報も混在させて処理してみる。
 # また、シェーダにグローバル情報を渡してみる
+#
+# == Require
+#
+# gem install gosu opengl
+# or
+# gem install gosu opengl-bindings
+#
+# == References
 #
 # 算譜記録帳: OpenGLでの頂点データの扱いの変化
 # http://mklearning.blogspot.com/2014/08/opengl.html
@@ -20,7 +28,23 @@
 # https://github.com/gosu/gosu-examples
 
 require 'gosu'
-require 'gl'
+
+$glbind = false
+
+begin
+  # gem install opengl
+  require 'gl'
+  include Gl
+  puts "load opengl"
+  $glbind = false
+rescue LoadError
+  # gem install opengl-bindings
+  require 'opengl'
+  OpenGL.load_lib
+  include OpenGL
+  puts "load opengl-bindings"
+  $glbind = true
+end
 
 WIDTH, HEIGHT = 640, 480
 
@@ -43,11 +67,18 @@ class GlObj
     ]
 
     # VBOを用意。バッファを生成
-    @buffers = glGenBuffers(1)
+    unless $glbind
+      # opengl
+      @buffers = glGenBuffers(1)
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])
+    else
+      # opengl-bindings
+      @buffers = ' ' * 4
+      glGenBuffers(1, @buffers)
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L')[0])
+    end
 
-    # バッファにデータを設定
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # バッファ種類を設定
-    data = @attrs.pack("f*")  # Rubyの場合、データはpackして渡す
+    data = @attrs.pack("f*")
     glBufferData(GL_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
   end
 
@@ -71,15 +102,11 @@ class GlObj
     Gosu.gl(z) { exec_gl }
   end
 
-  private
-
-  include Gl
-
   # プログラマブルシェーダの初期化
   def init_shader
     # 頂点シェーダ(Vertex Shader)のソース
     # coord2d に x,y を、v_color に r,g,b を渡す
-    vert_shader_src_a =<<EOS
+    vs_src_a =<<EOS
 #version 120
 attribute vec2 coord2d;
 attribute vec3 v_color;
@@ -92,7 +119,7 @@ EOS
 
     # フラグメントシェーダ(Fragment Shader)のソース
     # グローバル情報(uniform)を持っている
-    frag_shader_src =<<EOS
+    fs_src =<<EOS
 #version 120
 varying vec3 f_color;
 uniform float fade;
@@ -103,56 +130,78 @@ EOS
 
     # 頂点シェーダを設定
     # ----------------------------------------
+    vs = glCreateShader(GL_VERTEX_SHADER) # 1. シェーダオブジェクトを作成
 
-    # 1. シェーダオブジェクトを作成
-    vert_shader = glCreateShader(GL_VERTEX_SHADER)
+    unless $glbind
+      # opengl
+      glShaderSource(vs, vs_src_a) # 2. シェーダのソースを渡す
+      glCompileShader(vs)          # 3. シェーダをコンパイル
 
-    # 2. シェーダのソースを渡す
-    glShaderSource(vert_shader, vert_shader_src_a)
+      # 4. 正しくコンパイルできたか確認
+      compiled = glGetShaderiv(vs, GL_COMPILE_STATUS)
+      abort "Error : Compile error in vertex shader" if compiled == GL_FALSE
+    else
+      # opengl-bindings
+      glShaderSource(vs, 1, [vs_src_a].pack('p'), [vs_src_a.size].pack('I'))
+      glCompileShader(vs)
 
-    # 3. シェーダをコンパイル
-    glCompileShader(vert_shader)
+      compiled = ' ' * 4
+      glGetShaderiv(vs, GL_COMPILE_STATUS, compiled)
+      abort "Error : Compile error in vertex shader" if compiled == 0
+    end
 
-    # 4. 正しくコンパイルできたか確認
-    compiled = glGetShaderiv(vert_shader, GL_COMPILE_STATUS)
-    abort "Error : Compile error in vertex shader" if compiled == GL_FALSE
 
     # フラグメントシェーダを設定
     # ----------------------------------------
+    fs = glCreateShader(GL_FRAGMENT_SHADER) # 1. シェーダオブジェクトを作成
 
-    # 1. シェーダオブジェクトを作成
-    frag_shader = glCreateShader(GL_FRAGMENT_SHADER)
+    unless $glbind
+      # opengl
+      glShaderSource(fs, fs_src) # 2. シェーダのソースを渡す
+      glCompileShader(fs)        # 3. シェーダをコンパイル
 
-    # 2. シェーダのソースを渡す
-    glShaderSource(frag_shader, frag_shader_src)
+      # 4. 正しくコンパイルできたか確認
+      compiled = glGetShaderiv(fs, GL_COMPILE_STATUS)
+      abort "Error : Compile error in fragment shader" if compiled == GL_FALSE
+    else
+      # opengl-bindings
+      glShaderSource(fs, 1, [fs_src].pack('p'), [fs_src.size].pack('I'))
+      glCompileShader(fs)
 
-    # 3. シェーダをコンパイル
-    glCompileShader(frag_shader)
-
-    # 4. 正しくコンパイルできたか確認
-    compiled = glGetShaderiv(frag_shader, GL_COMPILE_STATUS)
-    abort "Error : Compile error in fragment shader" if compiled == GL_FALSE
+      compiled = ' ' * 4
+      glGetShaderiv(fs, GL_COMPILE_STATUS, compiled)
+      abort "Error : Compile error in fragment shader" if compiled == 0
+    end
 
     # 5. プログラムオブジェクトを作成
     @shader = glCreateProgram
 
     # 6. プログラムオブジェクトに対してシェーダオブジェクトを登録
-    glAttachShader(@shader, vert_shader)
-    glAttachShader(@shader, frag_shader)
+    glAttachShader(@shader, vs)
+    glAttachShader(@shader, fs)
 
     # 7. シェーダプログラムをリンク
     glLinkProgram(@shader)
 
     # 8. 正しくリンクできたか確認
-    linked = glGetProgramiv(@shader, GL_LINK_STATUS)
-    abort "Error : Linke error" if linked == GL_FALSE
+    unless $glbind
+      # opengl
+      linked = glGetProgramiv(@shader, GL_LINK_STATUS)
+      abort "Error : Linke error" if linked == GL_FALSE
+    else
+      # opengl-bindings
+      linked = ' ' * 4
+      glGetProgramiv(@shader, GL_LINK_STATUS, linked)
+      linked = linked.unpack('L')[0]
+      abort "Error : Linke error" if linked == 0
+    end
 
     # 9. シェーダプログラムを適用
     glUseProgram(@shader)
 
     # 設定が終わったので後始末
-    glDeleteShader(vert_shader)
-    glDeleteShader(frag_shader)
+    glDeleteShader(vs)
+    glDeleteShader(fs)
 
     # シェーダに渡す属性のインデックス値(0,1,2,3等)を得る
     attr_name = "coord2d"
@@ -192,63 +241,65 @@ EOS
 
     glEnableVertexAttribArray(@id_coord2d)   # 頂点配列を有効化
     glEnableVertexAttribArray(@id_v_color)   # 頂点カラー配列を有効化
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])   # 使用バッファを指定
 
-    # 頂点配列を指定
-    glVertexAttribPointer(
-                          @id_coord2d,  # 属性
-                          2,         # 1頂点に値をいくつ使うか。x,yなら2
-                          GL_FLOAT,  # 値の型
-                          GL_FALSE,  # データ型が整数型なら正規化するか否か
-                          5 * nf,    # stride. データの間隔
-                          0          # オフセット
-                          )
+    unless $glbind
+      # opengl
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])   # 使用バッファを指定
 
-    # 頂点カラー配列を指定
-    glVertexAttribPointer(
-                          @id_v_color,
-                          3,         # 1頂点に値をいくつ使うか。x,y,zなら3
-                          GL_FLOAT,
-                          GL_FALSE,
-                          5 * nf,
-                          2 * nf
-                          )
+      # 頂点配列を指定
+      glVertexAttribPointer(@id_coord2d,  # 属性
+                            2,         # 1頂点に値をいくつ使うか。x,yなら2
+                            GL_FLOAT,  # 値の型
+                            GL_FALSE,  # データ型が整数型なら正規化するか否か
+                            5 * nf,    # stride. データの間隔
+                            0          # オフセット
+                           )
+
+      # 頂点カラー配列を指定
+      glVertexAttribPointer(@id_v_color,
+                            3,         # 1頂点に値をいくつ使うか。x,y,zなら3
+                            GL_FLOAT,
+                            GL_FALSE,
+                            5 * nf,
+                            2 * nf
+                           )
+    else
+      # opengl-bindings
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L')[0])
+      glVertexAttribPointer(@id_coord2d, 2, GL_FLOAT, GL_FALSE, 5 * nf, 0)
+      glVertexAttribPointer(@id_v_color, 3, GL_FLOAT, GL_FALSE, 5 * nf, 2 * nf)
+    end
 
     # 描画
-    glDrawArrays(
-                 GL_TRIANGLES,    # プリミティブの種類
+    glDrawArrays(GL_TRIANGLES,    # プリミティブの種類
                  0,               # 開始インデックス
-                 @attrs.size / 5    # 頂点数
-                 )
+                 @attrs.size / 5  # 頂点数
+                )
 
     glDisableVertexAttribArray(@id_coord2d)  # 頂点配列を無効化
     glDisableVertexAttribArray(@id_v_color)  # 頂点カラー配列を無効化
   end
 end
 
-# メインクラス
+# Gosu main window class
 class MyWindow < Gosu::Window
 
-  # 初期化
   def initialize
     super WIDTH, HEIGHT
     self.caption = "Ruby + Gosu + OpenGL, programmable shader + VBO + Vertex color"
     @gl_obj = GlObj.new()
   end
 
-  # 更新
   def update
     @gl_obj.update
   end
 
-  # 描画
   def draw
     z = 0
     @gl_obj.draw(z)
   end
 
   def button_down(id)
-    # ESCが押されたら終了
     close if id == Gosu::KbEscape
   end
 end
