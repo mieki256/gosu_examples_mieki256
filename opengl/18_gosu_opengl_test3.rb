@@ -1,29 +1,63 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/15 02:51:04 +0900>
+# Last updated: <2019/03/19 22:54:19 +0900>
 #
 # gosu + opengl の動作確認
 # gosu-examplesの opengl_integration.rb を弄って OpenGL絡みの部分だけを列挙
 # wavefront(.obj)を読み込んで描画
 # Draw a model of wavefront (.obj) format using gosu + opengl
 #
+# == Require
+#
+# gem install gosu opengl
+# or
+# gem install gosu opengl-bindings
+#
+# == References
+#
 # gosu-examples
 # https://github.com/gosu/gosu-examples
 # https://github.com/gosu/gosu-examples/blob/master/examples/opengl_integration.rb
 
 require 'gosu'
-require 'gl'
+
+$glbind = false
+
+begin
+  # gem install opengl
+  require 'gl'
+  include Gl
+  puts "load opengl"
+  $glbind = false
+rescue LoadError
+  # gem install opengl-bindings
+  require 'opengl'
+  OpenGL.load_lib
+  include OpenGL
+  puts "load opengl-bindings"
+  $glbind = true
+end
+
 require_relative 'wavefrontobj'
 
 WIDTH, HEIGHT = 640, 480
 
-LIGHT_POS = [5.0, 5.0, 5.0]            # 位置
-LIGHT_AMBIENT = [0.2, 0.2, 0.2, 1.0]   # 環境光
-LIGHT_DIFFUSE = [0.7, 0.7, 0.7, 1.0]   # 拡散光
-LIGHT_SPECULAR = [1.0, 1.0, 1.0, 1.0]  # 鏡面光
+# モデルデータ
+MODELS = [
+  "wavefront/airplane.obj",
+  "wavefront/airplane_metaseq.obj",
+  "wavefront/suzanne.obj",
+  "wavefront/robo_01.obj",
+  "wavefront/robo_02.obj",
+]
+
+# ライト設定
+LIGHT_POS = [5.0, 5.0, 5.0, 0.0]  # 位置
+LIGHT_AMB = [0.2, 0.2, 0.2, 1.0]  # 環境光
+LIGHT_DIF = [0.8, 0.8, 0.8, 1.0]  # 拡散光
+LIGHT_SPE = [1.0, 1.0, 1.0, 1.0]  # 鏡面光
 
 TRANS_POS = { :x => 0.0, :y => 0.0, :z => -2.5 }
-# TRANS_POS = { :x => 0.0, :y => 0.0, :z => -5.0 }
 
 class GLWaveFrontObj
 
@@ -49,14 +83,14 @@ class GLWaveFrontObj
       end
     end
 
-    @rot_v = 0
-    @rot_v2 = 20
+    @y_rot = 0
+    @x_rot = 20
   end
 
   # 更新処理
   def update
-    @rot_v = (@rot_v + 0.5) % 360.0
-    # @rot_v2 = (@rot_v2 + 2.0) % 360.0
+    @y_rot = (@y_rot + 1.0) % 360.0
+    # @x_rot = (@x_rot + 0.75) % 360.0
   end
 
   # 描画処理
@@ -65,10 +99,6 @@ class GLWaveFrontObj
     # 描画後、Gosuの描画ができるようにしてくれるらしい
     Gosu.gl(z) { exec_gl }
   end
-
-  private
-
-  include Gl
 
   # OpenGL関係の処理
   def exec_gl
@@ -92,14 +122,23 @@ class GLWaveFrontObj
     # glEnable(GL_POLYGON_SMOOTH)  # ポリゴン描画のアンチエイリアスを有効化
     # glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST)
 
-    # ライト設定. GL_LIGHT0 に対して設定
-    glLight(GL_LIGHT0, GL_POSITION, LIGHT_POS)
-    glLight(GL_LIGHT0, GL_AMBIENT, LIGHT_AMBIENT)
-    glLight(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIFFUSE)
-    glLight(GL_LIGHT0, GL_SPECULAR, LIGHT_SPECULAR)
-
-    glEnable(GL_LIGHTING)    # ライティングを有効化
+    glEnable(GL_LIGHTING)  # ライティングを有効化
     glEnable(GL_LIGHT0)    # GL_LIGHT0 を有効化
+
+    # ライト設定. GL_LIGHT0 に対して設定
+    unless $glbind
+      # opengl
+      glLight(GL_LIGHT0, GL_POSITION, LIGHT_POS)  # 光源の位置
+      glLight(GL_LIGHT0, GL_AMBIENT, LIGHT_AMB)   # 環境光
+      glLight(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIF)   # 拡散光
+      glLight(GL_LIGHT0, GL_SPECULAR, LIGHT_SPE)  # 鏡面光
+    else
+      # opengl-bindings
+      glLightfv(GL_LIGHT0, GL_POSITION, LIGHT_POS.pack("f*"))
+      glLightfv(GL_LIGHT0, GL_AMBIENT, LIGHT_AMB.pack("f*"))
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIF.pack("f*"))
+      glLightfv(GL_LIGHT0, GL_SPECULAR, LIGHT_SPE.pack("f*"))
+    end
 
     glMatrixMode(GL_PROJECTION)  # 透視投影の設定
     glLoadIdentity
@@ -107,10 +146,16 @@ class GLWaveFrontObj
 
     glMatrixMode(GL_MODELVIEW)  # モデルビュー変換の指定
     glLoadIdentity
-    glTranslate(TRANS_POS[:x], TRANS_POS[:y], TRANS_POS[:z])  # 位置をずらす
 
-    glRotate(@rot_v, 0.0, 1.0, 0.0) # 回転
-    glRotate(@rot_v2, 1.0, 0.0, 0.0) # 回転
+    unless $glbind
+      glTranslate(TRANS_POS[:x], TRANS_POS[:y], TRANS_POS[:z])  # 位置をずらす
+      glRotate(@y_rot, 0.0, 1.0, 0.0)  # y 回転
+      glRotate(@x_rot, 1.0, 0.0, 0.0) # x 回転
+    else
+      glTranslatef(TRANS_POS[:x], TRANS_POS[:y], TRANS_POS[:z])
+      glRotatef(@y_rot, 0.0, 1.0, 0.0)
+      glRotatef(@x_rot, 1.0, 0.0, 0.0)
+    end
 
     vertexs = @objs.vertexs  # 頂点群
     normals = @objs.normals  # 法線群
@@ -139,15 +184,28 @@ class GLWaveFrontObj
       # マテリアル(材質)を指定
       # fk = GL_FRONT
       fk = GL_FRONT_AND_BACK
-      glMaterial(fk, GL_AMBIENT, m[:ambient]) if m.key?(:ambient)  # 環境光
-      glMaterial(fk, GL_DIFFUSE, m[:diffuse]) if m.key?(:diffuse)  # 拡散光
-      glMaterial(fk, GL_EMISSION, m[:emission]) if m.key?(:emission)  # 放射輝度
+      unless $glbind
+        # opengl
+        glMaterial(fk, GL_AMBIENT, m[:ambient]) if m.key?(:ambient)  # 環境光
+        glMaterial(fk, GL_DIFFUSE, m[:diffuse]) if m.key?(:diffuse)  # 拡散光
+        glMaterial(fk, GL_EMISSION, m[:emission]) if m.key?(:emission)  # 放射輝度
+        glMaterial(fk, GL_SPECULAR, m[:specular]) if m.key?(:specular)  # 鏡面光
+        if m.key?(:shininess)
+          # 鏡面光指数を 0-1000 の範囲から 0-128 の範囲に変換
+          v = m[:shininess] * 128.0 / 1000.0
+          glMaterial(fk, GL_SHININESS, v)
+        end
+      else
+        # opengl-bindings
+        glMaterialfv(fk, GL_AMBIENT, m[:ambient].pack("f*")) if m.key?(:ambient)
+        glMaterialfv(fk, GL_DIFFUSE, m[:diffuse].pack("f*")) if m.key?(:diffuse)
+        glMaterialfv(fk, GL_EMISSION, m[:emission].pack("f*")) if m.key?(:emission)
+        glMaterialfv(fk, GL_SPECULAR, m[:specular].pack("f*")) if m.key?(:specular)
+        if m.key?(:shininess)
+          v = m[:shininess] * 128.0 / 1000.0
+          glMaterialf(fk, GL_SHININESS, v)
+        end
 
-      glMaterial(fk, GL_SPECULAR, m[:specular]) if m.key?(:specular)  # 鏡面光
-      if m.key?(:shininess)
-        # 鏡面光指数を 0-1000 の範囲から 0-128 の範囲に変換
-        v = m[:shininess] * 128.0 / 1000.0
-        glMaterial(fk, GL_SHININESS, v)
       end
 
       # 面を一枚ずつ指定。本来はVBOとやらを使うのではなかろうか…
@@ -198,7 +256,7 @@ class GLWaveFrontObj
   end
 end
 
-# Main window
+# Gosu main window class
 class MyWindow < Gosu::Window
 
   def initialize
@@ -207,16 +265,12 @@ class MyWindow < Gosu::Window
 
     @kind = 0
     @gl_objs = []
-    [
-      "wavefront/airplane.obj",
-      "wavefront/airplane_metaseq.obj",
-      "wavefront/suzanne.obj",
-      "wavefront/robo_01.obj",
-      "wavefront/robo_02.obj",
-    ].each do |fn|
+    MODELS.each do |fn|
       gl_obj = GLWaveFrontObj.new(fn)
       @gl_objs.push(gl_obj)
     end
+
+    @font = Gosu::Font.new(20)
   end
 
   def update
@@ -226,6 +280,11 @@ class MyWindow < Gosu::Window
   def draw
     z = 0
     @gl_objs[@kind].draw(z)
+
+    z = 1
+    @font.draw_text("Left/Right : Change model", 4, 4, z)
+    s = MODELS[@kind]
+    @font.draw_text(s, 4, 4 + 24, z)
   end
 
   def button_down(id)
@@ -235,10 +294,10 @@ class MyWindow < Gosu::Window
 
   def button_up(id)
     # Modle change : LEFT, RIGHT
-    if id == Gosu::KbRight
+    case id
+    when Gosu::KbRight
       @kind = (@kind + 1) % @gl_objs.size
-    end
-    if id == Gosu::KbLeft
+    when Gosu::KbLeft
       @kind = (@kind - 1 + @gl_objs.size) % @gl_objs.size
     end
   end
