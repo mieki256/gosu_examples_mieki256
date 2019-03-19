@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/15 02:52:32 +0900>
+# Last updated: <2019/03/19 01:58:33 +0900>
 #
 # Ruby + gosu + opengl の動作確認
 # gosu-examples の opengl_integration.rb を弄ってOpenGL絡みの部分だけを列挙
@@ -8,6 +8,14 @@
 # OpenGL 2.0風。GLSLでシェーダを書いて描画するテスト
 # phongシェーディング + テクスチャマッピング
 # tinywavefrontobj.rb を使って .objファイルを読んで描画してみる
+#
+# == Require
+#
+# gem install gosu opengl
+# or
+# gem install gosu opengl-bindings
+#
+# == References
 #
 # 床井研究室 - 第１回 シェーダプログラムの読み込み
 # http://marina.sys.wakayama-u.ac.jp/~tokoi/?date=20051006
@@ -28,8 +36,25 @@
 # https://github.com/gosu/gosu-examples
 
 require 'gosu'
-require 'gl'
-require_relative 'tinywavefrontobj'
+
+$glbind = false
+
+begin
+  # gem install opengl
+  require 'gl'
+  include Gl
+  puts "load opengl"
+  $glbind = false
+rescue LoadError
+  # gem install opengl-bindings
+  require 'opengl'
+  OpenGL.load_lib
+  include OpenGL
+  puts "load opengl-bindings"
+  $glbind = true
+end
+
+require_relative './tinywavefrontobj'
 
 TEX_FILE = "wavefront/UVCheckerMap01-1024.png"
 
@@ -57,10 +82,27 @@ SHADER_SRC_LIST = [
 
 WIDTH, HEIGHT = 640, 480
 
+# ライト設定
 LIGHT_POS = [0.0, 0.0, 3.0, 1.0]   # 光源の位置
 LIGHT_AMB = [0.1, 0.1, 0.1, 1.0]   # 環境光
 LIGHT_DIF = [1.0, 1.0, 1.0, 1.0]   # 拡散光
 LIGHT_SPE = [1.0, 1.0, 1.0, 1.0]   # 鏡面光
+
+# opengl-bindings 使用時のために pack しておく
+LIGHT_POS_PACK = LIGHT_POS.pack("f*")
+LIGHT_AMB_PACK = LIGHT_AMB.pack("f*")
+LIGHT_DIF_PACK = LIGHT_DIF.pack("f*")
+LIGHT_SPE_PACK = LIGHT_SPE.pack("f*")
+
+# 材質設定
+AMBIENT = [0.5, 0.5, 0.5, 1.0]
+DIFFUSE = [0.5, 0.5, 0.5, 1.0]
+SPECULAR = [0.3, 0.3, 0.3, 1.0]
+SHININESS = 100.0
+
+AMBIENT_PACK = AMBIENT.pack("f*")
+DIFFUSE_PACK = DIFFUSE.pack("f*")
+SPECULAR_PACK = SPECULAR.pack("f*")
 
 # OpenGLで描画するクラス
 class GlObj
@@ -93,34 +135,62 @@ class GlObj
     @obj = TinyWaveFrontObj.new(OBJ_FILE)
     vtx = @obj.get_vertex_array  # 頂点配列を取得
     nml = @obj.get_normal_array  # 法線配列を取得
-    uv = @obj.get_uv_array  # uv配列を取得
-    face = @obj.get_face_array  # 頂点インデックス配列を取得
+    uv = @obj.get_uv_array       # uv配列を取得
+    face = @obj.get_face_array   # 頂点インデックス配列を取得
 
     # VBOを用意。バッファを生成。
-    # 頂点配列、法線配列、uv配列、頂点インデックス配列の4つを確保
-    @buffers = glGenBuffers(4)
+    unless $glbind
+      # opengl
+      # 頂点配列、法線配列、uv配列、頂点インデックス配列の4つを確保
+      @buffers = glGenBuffers(4)
 
-    # バッファにデータを設定
-    data = vtx.pack("f*")  # Rubyの場合、データはpackして渡す
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # バッファ種類を設定
-    glBufferData(GL_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
-
-    if @obj.use_normal
-      data = nml.pack("f*")
-      glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
+      # バッファにデータを設定
+      data = vtx.pack("f*")  # Rubyの場合、データはpackして渡す
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # バッファ種類を設定
       glBufferData(GL_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
-    end
 
-    if @obj.use_uv
-      data = uv.pack("f*")
-      glBindBuffer(GL_ARRAY_BUFFER, @buffers[2])
+      if @obj.use_normal
+        data = nml.pack("f*")
+        glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
+        glBufferData(GL_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
+      end
+
+      if @obj.use_uv
+        data = uv.pack("f*")
+        glBindBuffer(GL_ARRAY_BUFFER, @buffers[2])
+        glBufferData(GL_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
+      end
+
+      @face_size = face.size
+      data = face.pack("S*")
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers[3])
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
+    else
+      # opengl-bindings
+      @buffers = ' ' * (4 * 4)
+      glGenBuffers(4, @buffers)
+
+      data = vtx.pack("f*")
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[0])
       glBufferData(GL_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
-    end
 
-    @face_size = face.size
-    data = face.pack("S*")
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers[3])
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
+      if @obj.use_normal
+        data = nml.pack("f*")
+        glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[1])
+        glBufferData(GL_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
+      end
+
+      if @obj.use_uv
+        data = uv.pack("f*")
+        glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[2])
+        glBufferData(GL_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
+      end
+
+      @face_size = face.size
+      data = face.pack("S*")
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers.unpack('L4')[3])
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
+    end
   end
 
   # 更新処理
@@ -135,52 +205,70 @@ class GlObj
     Gosu.gl(z) { exec_gl }
   end
 
-  private
-
-  include Gl
-
   # プログラマブルシェーダの初期化
   def init_shader(vert_src_fn, frag_src_fn)
 
     # 1. シェーダオブジェクト作成
-    vert_shader = glCreateShader(GL_VERTEX_SHADER)
-    frag_shader = glCreateShader(GL_FRAGMENT_SHADER)
+    vs = glCreateShader(GL_VERTEX_SHADER)
+    fs = glCreateShader(GL_FRAGMENT_SHADER)
 
     # 頂点シェーダを設定
     File.open(vert_src_fn, "rb") { |file|
       src = file.read
-      glShaderSource(vert_shader, src)    # 2. シェーダのソースを渡す
-      glCompileShader(vert_shader)        # 3. シェーダをコンパイル
+      unless $glbind
+        glShaderSource(vs, src)  # 2. シェーダのソースを渡す
+        glCompileShader(vs)      # 3. シェーダをコンパイル
 
-      # 4. 正しくコンパイルできたか確認
-      compiled = glGetShaderiv(vert_shader, GL_COMPILE_STATUS)
-      abort "Error : Compile error in vertex shader" if compiled == GL_FALSE
+        # 4. 正しくコンパイルできたか確認
+        compiled = glGetShaderiv(vs, GL_COMPILE_STATUS)
+        abort "Error : Compile error in vertex shader" if compiled == GL_FALSE
+      else
+        glShaderSource(vs, 1, [src].pack('p'), [src.size].pack('I'))
+        glCompileShader(vs)
+        compiled = ' ' * 4
+        glGetShaderiv(vs, GL_COMPILE_STATUS, compiled)
+        abort "Error : Compile error in vertex shader" if compiled == 0
+      end
     }
 
     # フラグメントシェーダを設定
     File.open(frag_src_fn, "rb") { |file|
       src = file.read
-      glShaderSource(frag_shader, src)    # 2. シェーダのソースを渡す
-      glCompileShader(frag_shader)        # 3. シェーダをコンパイル
+      unless $glbind
+        glShaderSource(fs, src)    # 2. シェーダのソースを渡す
+        glCompileShader(fs)        # 3. シェーダをコンパイル
 
-      # 4. 正しくコンパイルできたか確認
-      compiled = glGetShaderiv(frag_shader, GL_COMPILE_STATUS)
-      abort "Error : Compile error in fragment shader" if compiled == GL_FALSE
+        # 4. 正しくコンパイルできたか確認
+        compiled = glGetShaderiv(fs, GL_COMPILE_STATUS)
+        abort "Error : Compile error in fragment shader" if compiled == GL_FALSE
+      else
+        glShaderSource(fs, 1, [src].pack('p'), [src.size].pack('I'))
+        glCompileShader(fs)
+        compiled = ' ' * 4
+        glGetShaderiv(fs, GL_COMPILE_STATUS, compiled)
+        abort "Error : Compile error in fragment shader" if compiled == 0
+      end
     }
 
-    shader = glCreateProgram             # 5. プログラムオブジェクト作成
-    glAttachShader(shader, vert_shader)  # 6. シェーダオブジェクトを登録
-    glAttachShader(shader, frag_shader)
-    glLinkProgram(shader)                # 7. シェーダプログラムをリンク
+    shader = glCreateProgram    # 5. プログラムオブジェクト作成
+    glAttachShader(shader, vs)  # 6. シェーダオブジェクトを登録
+    glAttachShader(shader, fs)
+    glLinkProgram(shader)       # 7. シェーダプログラムをリンク
 
     # 8. 正しくリンクできたか確認
-    linked = glGetProgramiv(shader, GL_LINK_STATUS)
-    abort "Error : Linke error" if linked == GL_FALSE
+    unless $glbind
+      linked = glGetProgramiv(shader, GL_LINK_STATUS)
+      abort "Error : Linke error" if linked == GL_FALSE
+    else
+      linked = ' ' * 4
+      glGetProgramiv(shader, GL_LINK_STATUS, linked)
+      linked = linked.unpack('L')[0]
+      abort "Error : Linke error" if linked == 0
+    end
 
-    glUseProgram(shader)                 # 9. シェーダプログラムを適用
-
-    glDeleteShader(vert_shader)          # 10. 設定が終わったので後始末
-    glDeleteShader(frag_shader)
+    glUseProgram(shader)  # 9. シェーダプログラムを適用
+    glDeleteShader(vs)    # 10. 設定が終わったので後始末
+    glDeleteShader(fs)
 
     return shader
   end
@@ -198,12 +286,20 @@ class GlObj
     glEnable(GL_BLEND)         # アルファブレンドを有効化
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-    glLightfv(GL_LIGHT0, GL_POSITION, LIGHT_POS)  # 光源の位置
-    glLightfv(GL_LIGHT0, GL_AMBIENT, LIGHT_AMB)   # 環境光
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIF)   # 拡散光
-    glLightfv(GL_LIGHT0, GL_SPECULAR, LIGHT_SPE)  # 鏡面光
     glEnable(GL_LIGHTING)      # 光源の有効化
     glEnable(GL_LIGHT0)        # 0番目のライトを有効化
+
+    unless $glbind
+      glLightfv(GL_LIGHT0, GL_POSITION, LIGHT_POS)  # 光源の位置
+      glLightfv(GL_LIGHT0, GL_AMBIENT, LIGHT_AMB)   # 環境光
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIF)   # 拡散光
+      glLightfv(GL_LIGHT0, GL_SPECULAR, LIGHT_SPE)  # 鏡面光
+    else
+      glLightfv(GL_LIGHT0, GL_POSITION, LIGHT_POS_PACK)
+      glLightfv(GL_LIGHT0, GL_AMBIENT, LIGHT_AMB_PACK)
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIF_PACK)
+      glLightfv(GL_LIGHT0, GL_SPECULAR, LIGHT_SPE_PACK)
+    end
 
     glMatrixMode(GL_PROJECTION)  # 透視投影の設定
     glLoadIdentity               # 変換行列の初期化
@@ -211,22 +307,35 @@ class GlObj
 
     glMatrixMode(GL_MODELVIEW)  # モデルビュー変換の指定
     glLoadIdentity              # 変換行列の初期化
-    glTranslate(@pos[:x], @pos[:y], @pos[:z])  # 平行移動
-    glRotate(@rot_x, 1.0, 0.0, 0.0)            # 回転
-    glRotate(@rot_y, 0.0, 1.0, 0.0)            # 回転
+
+    unless $glbind
+      glTranslate(@pos[:x], @pos[:y], @pos[:z])  # 平行移動
+      glRotate(@rot_x, 1.0, 0.0, 0.0)            # x 回転
+      glRotate(@rot_y, 0.0, 1.0, 0.0)            # y 回転
+    else
+      glTranslatef(@pos[:x], @pos[:y], @pos[:z])
+      glRotatef(@rot_x, 1.0, 0.0, 0.0)
+      glRotatef(@rot_y, 0.0, 1.0, 0.0)
+    end
 
     # 材質を設定
-    ambient = [0.5, 0.5, 0.5, 1.0]
-    diffuse = [0.5, 0.5, 0.5, 1.0]
-    specular = [0.3, 0.3, 0.3, 1.0]
-    shininess = 100.0
-    glMaterial(GL_FRONT_AND_BACK, GL_AMBIENT, ambient)
-    glMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse)
-    glMaterial(GL_FRONT_AND_BACK, GL_SPECULAR, specular)
-    glMaterial(GL_FRONT_AND_BACK, GL_SHININESS, shininess)
+    unless $glbind
+      glMaterial(GL_FRONT_AND_BACK, GL_AMBIENT, AMBIENT)
+      glMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE, DIFFUSE)
+      glMaterial(GL_FRONT_AND_BACK, GL_SPECULAR, SPECULAR)
+      glMaterial(GL_FRONT_AND_BACK, GL_SHININESS, SHININESS)
+    else
+      glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, AMBIENT_PACK)
+      glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, DIFFUSE_PACK)
+      glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, SPECULAR_PACK)
+      glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, SHININESS)
+    end
 
     # モデルデータを描画
     # ----------------------------------------
+
+    # float型(C言語)のバイト数を求める。…他にいい方法があるのでは？
+    nf = [0.0].pack("f*").size
 
     # 利用シェーダを指定
     if USE_MY_SHADER
@@ -237,90 +346,104 @@ class GlObj
       end
     end
 
-    # float型(C言語)のバイト数を求める。…他にいい方法があるのでは？
-    nf = [0.0].pack("f*").size
-
     glEnableClientState(GL_VERTEX_ARRAY)        # 頂点配列を有効化
     glEnableClientState(GL_NORMAL_ARRAY) if @obj.use_normal  # 法線配列を有効化
     glEnableClientState(GL_TEXTURE_COORD_ARRAY) if @obj.use_uv  # uv配列を有効化
 
-    # 頂点配列を指定
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # 使用バッファを指定
-    glVertexPointer(
-                    3,         # 1頂点に値をいくつ使うか。x,y,zなら3
-                    GL_FLOAT,  # 値の型
-                    0,         # stride. データの間隔
-                    0          # バッファオフセット
-                    )
-
-    if @obj.use_normal
-      # 法線配列を指定。法線は必ずx,y,zを渡すのでサイズ指定は不要
-      glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
-      glNormalPointer(
+    unless $glbind
+      # 頂点配列を指定
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # 使用バッファを指定
+      glVertexPointer(3,         # 1頂点に値をいくつ使うか。x,y,zなら3
                       GL_FLOAT,  # 値の型
                       0,         # stride. データの間隔
-                      0,         # バッファオフセット
-                      )
-    end
+                      0          # バッファオフセット
+                     )
 
-    if @obj.use_uv
-      # uv配列を指定
-      glBindBuffer(GL_ARRAY_BUFFER, @buffers[2])
-      glTexCoordPointer(
-                        2,         # 1頂点に値をいくつ使うか。u,vなら2
-                        GL_FLOAT,  # 値の型
+      if @obj.use_normal
+        # 法線配列を指定。法線は必ずx,y,zを渡すのでサイズ指定は不要
+        glBindBuffer(GL_ARRAY_BUFFER, @buffers[1])
+        glNormalPointer(GL_FLOAT,  # 値の型
                         0,         # stride. データの間隔
-                        0,         # バッファオフセット
-                        )
+                        0          # バッファオフセット
+                       )
+      end
+
+      if @obj.use_uv
+        # uv配列を指定
+        glBindBuffer(GL_ARRAY_BUFFER, @buffers[2])
+        glTexCoordPointer(2,         # 1頂点に値をいくつ使うか。u,vなら2
+                          GL_FLOAT,  # 値の型
+                          0,         # stride. データの間隔
+                          0          # バッファオフセット
+                         )
+      end
+
+      glEnable(GL_TEXTURE_2D)                          # テクスチャ有効化
+      glBindTexture(GL_TEXTURE_2D, @texinfo.tex_name)  # テクスチャ割り当て
+
+      # テクスチャの補間を指定
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+
+      # 頂点インデックス配列を指定して描画
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers[3])
+      glDrawElements(GL_TRIANGLES,          # プリミティブ種類
+                     @face_size,            # 頂点インデックスの個数
+                     GL_UNSIGNED_SHORT,     # 頂点インデックスの型
+                     0                      # バッファオフセット
+                    )
+
+      glDisable(GL_TEXTURE_2D)                      # テクスチャ無効化
+    else
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[0])
+      glVertexPointer(3, GL_FLOAT, 0, 0)
+
+      if @obj.use_normal
+        glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[1])
+        glNormalPointer(GL_FLOAT, 0, 0)
+      end
+
+      if @obj.use_uv
+        glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L4')[2])
+        glTexCoordPointer(2, GL_FLOAT, 0, 0)
+      end
+
+      glEnable(GL_TEXTURE_2D)
+      glBindTexture(GL_TEXTURE_2D, @texinfo.tex_name)
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers.unpack('L4')[3])
+      glDrawElements(GL_TRIANGLES, @face_size, GL_UNSIGNED_SHORT, 0)
+
+      glDisable(GL_TEXTURE_2D)
     end
 
-    glEnable(GL_TEXTURE_2D)                          # テクスチャ有効化
-    glBindTexture(GL_TEXTURE_2D, @texinfo.tex_name)  # テクスチャ割り当て
-
-    # テクスチャの補間を指定
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-
-    # 頂点インデックス配列を指定して描画
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, @buffers[3])
-    glDrawElements(
-                   GL_TRIANGLES,          # プリミティブ種類
-                   @face_size,            # 頂点インデックスの個数
-                   GL_UNSIGNED_SHORT,     # 頂点インデックスの型
-                   0                      # バッファオフセット
-                   )
-
-    glDisable(GL_TEXTURE_2D)                      # テクスチャ無効化
-
-    glDisableClientState(GL_VERTEX_ARRAY)         # 頂点配列を無効化
+    glDisableClientState(GL_VERTEX_ARRAY)                     # 頂点配列を無効化
     glDisableClientState(GL_NORMAL_ARRAY) if @obj.use_normal  # 法線配列を無効化
     glDisableClientState(GL_TEXTURE_COORD_ARRAY) if @obj.use_uv  # uv配列を無効化
   end
 end
 
-# メインクラス
+# Gosu main window class
 class MyWindow < Gosu::Window
 
-  # 初期化
   def initialize
     super WIDTH, HEIGHT
     self.caption = "Ruby + Gosu + OpenGL, programmable shader (Phong) + VBO"
     @gl_obj = GlObj.new(0.0, 0.0, -3.5)
   end
 
-  # 更新
   def update
     @gl_obj.update
   end
 
-  # 描画
   def draw
     z = 0
     @gl_obj.draw(z)
   end
 
   def button_down(id)
-    # ESCが押されたら終了
     close if id == Gosu::KbEscape
   end
 end

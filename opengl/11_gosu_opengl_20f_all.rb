@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/18 10:01:23 +0900>
+# Last updated: <2019/03/18 20:49:39 +0900>
 #
 # Ruby + gosu + opengl の動作確認
 # gosu-examples の opengl_integration.rb を弄ってOpenGL絡みの部分だけを列挙
@@ -57,54 +57,22 @@ end
 # シェーダのソースファイルリスト
 SHADER_DIR = "shaders/"
 SHADER_SRC_LIST = [
-  [
-    # 0
-    "simple0.vert",
-    "simple0.frag"
-  ],
-  [
-    # 1
-    "simple1.vert",
-    "simple1.frag"
-  ],
-  [
-    # 2
-    "simple2.vert",
-    "simple2.frag"
-  ],
-  [
-    # 3
-    "gouraud_shading0.vert",
-    "gouraud_shading0.frag"
-  ],
-  [
-    # 4
-    "gouraud_shading1.vert",
-    "gouraud_shading1.frag"
-  ],
-  [
-    # 5
-    "phong_shading.vert",
-    "phong_shading.frag"
-  ],
-  [
-    # 6
-    "gouraud_shading2_with_tex.vert",
-    "gouraud_shading2_with_tex.frag"
-  ],
-  [
-    # 7
-    "phong_shading_with_tex.vert",
-    "phong_shading_with_tex.frag"
-  ],
+  ["simple0.vert", "simple0.frag"], # 0
+  ["simple1.vert", "simple1.frag"], # 1
+  ["simple2.vert", "simple2.frag"], # 2
+  ["gouraud_shading0.vert", "gouraud_shading0.frag"], # 3
+  ["gouraud_shading1.vert", "gouraud_shading1.frag"], # 4
+  ["phong_shading.vert", "phong_shading.frag"], # 5
+  ["gouraud_shading2_with_tex.vert", "gouraud_shading2_with_tex.frag"], # 6
+  ["phong_shading_with_tex.vert", "phong_shading_with_tex.frag"], # 7
 ]
 
 # シェーダ種類
 SHADER_KIND = 7
 
 # テクスチャ画像ファイル
-TEX_FILE = "res/uvtex.png"
-# TEX_FILE = "res/UVCheckerMap01-1024.png"
+# TEX_FILE = "res/uvtex.png"
+TEX_FILE = "res/UVCheckerMap01-1024.png"
 
 WIDTH, HEIGHT = 640, 480
 

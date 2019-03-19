@@ -1,12 +1,21 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/15 02:52:43 +0900>
+# Last updated: <2019/03/18 21:02:53 +0900>
 #
 # Ruby + gosu + opengl の動作確認
 # gosu-examples の opengl_integration.rb を弄ってOpenGL絡みの部分だけを列挙
 #
 # OpenGL 2.0風。
 # GLSLでシェーダを書いて、四角形を回転させるテスト
+# シェーダ部分を1つのソースの中にべた書きした版
+#
+# == Require
+#
+# gem install gosu opengl
+# or
+# gem install gosu opengl-bindings
+#
+# == References
 #
 # 床井研究室 - 第１回 シェーダプログラムの読み込み
 # http://marina.sys.wakayama-u.ac.jp/~tokoi/?date=20051006
@@ -27,24 +36,58 @@
 # https://github.com/gosu/gosu-examples
 
 require 'gosu'
-require 'gl'
+
+$glbind = false
+
+begin
+  # gem install opengl
+  require 'gl'
+  include Gl
+  puts "load opengl"
+  $glbind = false
+rescue LoadError
+  # gem install opengl-bindings
+  require 'opengl'
+  OpenGL.load_lib
+  include OpenGL
+  puts "load opengl-bindings"
+  $glbind = true
+end
 
 TEX_FILE = "res/UVCheckerMap01-1024.png"
 
 WIDTH, HEIGHT = 640, 480
 
+# ライト設定
 LIGHT_POS = [0.0, 0.0, 5.0, 1.0]   # 光源の位置
-LIGHT_AMB = [0.1, 0.1, 0.1, 1.0]   # 環境光
+LIGHT_AMB = [0.2, 0.2, 0.2, 1.0]   # 環境光
 LIGHT_DIF = [1.0, 1.0, 1.0, 1.0]   # 拡散光
 LIGHT_SPE = [1.0, 1.0, 1.0, 1.0]   # 鏡面光
 
+# opengl-bindings 使用時のために pack しておく
+LIGHT_POS_PACK = LIGHT_POS.pack("f*")
+LIGHT_AMB_PACK = LIGHT_AMB.pack("f*")
+LIGHT_DIF_PACK = LIGHT_DIF.pack("f*")
+LIGHT_SPE_PACK = LIGHT_SPE.pack("f*")
+
+# 材質設定
+DIFFUSE = [0.5, 0.5, 0.5, 1.0]
+SPECULAR = [0.3, 0.3, 0.3, 1.0]
+SHININESS = 100.0
+
+DIFFUSE_PACK = DIFFUSE.pack("f*")
+SPECULAR_PACK = SPECULAR.pack("f*")
+
 class GlObj
+
+  attr_accessor :shader_kind
 
   # 初期化
   def initialize(pos_x = 0.0, pos_y = 0.0, pos_z = -3.0)
     @pos = { :x => pos_x, :y => pos_y, :z => pos_z }
     @rot_x = 10.0
     @rot_y = 0.0
+    @shader_kind = 6
 
     # テクスチャ画像読み込み
     @img = Gosu::Image.new(TEX_FILE, :tileable => true)
@@ -59,18 +102,25 @@ class GlObj
     init_shader
 
     # 四角形の頂点データ
+    u, v = 0.5, 0.5
+    nx, ny, nz = 0.0, 0.0, 1.0
     @attrs = [
       # x, y, z, nx, ny, nz, u, v
-      -1.0, -1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5,
-      1.0, -1.0, 0.0, 0.0, 0.0, 1.0, 0.5, 0.5,
-      1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.5, 0.0,
-      -1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+      -1.0, -1.0, 0.0, nx, ny, nz, 0.0, v,
+      +1.0, -1.0, 0.0, nx, ny, nz, u, v,
+      +1.0, +1.0, 0.0, nx, ny, nz, u, 0.0,
+      -1.0, +1.0, 0.0, nx, ny, nz, 0.0, 0.0,
     ]
 
-    @buffers = glGenBuffers(1)  # VBOを用意。バッファを生成
-
-    # バッファにデータを設定
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # バッファ種類を設定
+    # VBOを用意。バッファを生成してデータを設定
+    unless $glbind
+      @buffers = glGenBuffers(1)
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # バッファ種類を設定
+    else
+      @buffers = ' ' * 4
+      glGenBuffers(1, @buffers)
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L')[0])
+    end
     data = @attrs.pack("f*")  # Rubyの場合、データはpackして渡す
     glBufferData(GL_ARRAY_BUFFER, data.size, data, GL_STATIC_DRAW)
   end
@@ -87,30 +137,43 @@ class GlObj
     Gosu.gl(z) { exec_gl }
   end
 
-  private
+  def inc_shader_kind
+    @shader_kind += 1
+    @shader_kind = 0 if @shader_kind >= @shaders.size
+  end
 
-  include Gl
+  def dec_shader_kind
+    @shader_kind -= 1
+    @shader_kind = @shaders.size - 1 if @shader_kind < 0
+  end
 
   # プログラマブルシェーダの初期化
   def init_shader
+    @shaders = []
+    7.times do |i|
+      shader = get_shader(i)
+      @shaders.push(shader)
+    end
+  end
 
-    case 6
+  # プログラマブルシェーダを作成して返す
+  def get_shader(kind)
+
+    case kind
     when 0
       # ----------------------------------------
       # 頂点シェーダ(Vertex Shader)のソース
-      vert_shader_src =<<EOS
+      vs_src =<<EOS
 #version 120
-void main(void)
-{
+void main(void) {
   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
 }
 EOS
 
       # フラグメントシェーダ(Fragment Shader)のソース
-      frag_shader_src =<<EOS
+      fs_src =<<EOS
 #version 120
-void main (void)
-{
+void main (void) {
   gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }
 EOS
@@ -118,19 +181,17 @@ EOS
     when 1
       # 前面色をつけて、かつ、ftransform() を使ったもの
       # ----------------------------------------
-      vert_shader_src =<<EOS
+      vs_src =<<EOS
 #version 120
-void main(void)
-{
-  gl_FrontColor = vec4(1.0, 0.0, 0.0, 1.0);
+void main(void) {
+  gl_FrontColor = vec4(0.0, 1.0, 0.0, 1.0);
   gl_Position = ftransform();
 }
 EOS
 
-      frag_shader_src =<<EOS
+      fs_src =<<EOS
 #version 120
-void main (void)
-{
+void main (void) {
   gl_FragColor = gl_Color;
 }
 EOS
@@ -138,10 +199,9 @@ EOS
     when 2
       # 光源で明るさが変わるようにしたもの
       # ----------------------------------------
-      vert_shader_src =<<EOS
+      vs_src =<<EOS
 #version 120
-void main(void)
-{
+void main(void) {
   vec4 position = gl_ModelViewMatrix * gl_Vertex;
   vec3 normal = normalize(gl_NormalMatrix * gl_Normal);
   vec3 light = normalize((gl_LightSource[0].position * position.w - gl_LightSource[0].position.w * position).xyz);
@@ -152,10 +212,9 @@ void main(void)
 }
 EOS
 
-      frag_shader_src =<<EOS
+      fs_src =<<EOS
 #version 120
-void main (void)
-{
+void main (void) {
   gl_FragColor = gl_Color;
 }
 EOS
@@ -164,10 +223,9 @@ EOS
       # Gouraud シェーディング
       # OpenGLの固定機能相当らしい
       # ----------------------------------------
-      vert_shader_src =<<EOS
+      vs_src =<<EOS
 #version 120
-void main(void)
-{
+void main(void) {
   vec4 position = gl_ModelViewMatrix * gl_Vertex;
   vec3 normal = normalize(gl_NormalMatrix * gl_Normal);
   vec3 light = normalize((gl_LightSource[0].position * position.w - gl_LightSource[0].position.w * position).xyz);
@@ -184,10 +242,9 @@ void main(void)
 }
 EOS
 
-      frag_shader_src =<<EOS
+      fs_src =<<EOS
 #version 120
-void main (void)
-{
+void main (void) {
   gl_FragColor = gl_Color;
 }
 EOS
@@ -196,10 +253,9 @@ EOS
       # Gouraud シェーディング(改)
       # gl_FrontLightProduct を使って置き換えたもの
       # ----------------------------------------
-      vert_shader_src =<<EOS
+      vs_src =<<EOS
 #version 120
-void main(void)
-{
+void main(void) {
   vec4 position = gl_ModelViewMatrix * gl_Vertex;
   vec3 normal = normalize(gl_NormalMatrix * gl_Normal);
   vec3 light = normalize((gl_LightSource[0].position * position.w - gl_LightSource[0].position.w * position).xyz);
@@ -216,10 +272,9 @@ void main(void)
 }
 EOS
 
-      frag_shader_src =<<EOS
+      fs_src =<<EOS
 #version 120
-void main (void)
-{
+void main (void) {
   gl_FragColor = gl_Color;
 }
 EOS
@@ -227,26 +282,24 @@ EOS
     when 5
       # Phong シェーディング
       # ----------------------------------------
-      vert_shader_src =<<EOS
+      vs_src =<<EOS
 #version 120
 varying vec4 position;
 varying vec3 normal;
 
-void main(void)
-{
+void main(void) {
   position = gl_ModelViewMatrix * gl_Vertex;
   normal = normalize(gl_NormalMatrix * gl_Normal);
   gl_Position = ftransform();
 }
 EOS
 
-      frag_shader_src =<<EOS
+      fs_src =<<EOS
 #version 120
 varying vec4 position;
 varying vec3 normal;
 
-void main (void)
-{
+void main (void) {
   vec3 light = normalize((gl_LightSource[0].position * position.w - gl_LightSource[0].position.w * position).xyz);
   vec3 fnormal = normalize(normal);
   float diffuse = max(dot(light, fnormal), 0.0);
@@ -263,13 +316,12 @@ EOS
     when 6
       # Phong シェーディング + テクスチャマッピング
       # ----------------------------------------
-      vert_shader_src =<<EOS
+      vs_src =<<EOS
 #version 120
 varying vec4 position;
 varying vec3 normal;
 
-void main(void)
-{
+void main(void) {
   position = gl_ModelViewMatrix * gl_Vertex;
   normal = normalize(gl_NormalMatrix * gl_Normal);
   gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
@@ -277,7 +329,7 @@ void main(void)
 }
 EOS
 
-      frag_shader_src =<<EOS
+      fs_src =<<EOS
 #version 120
 
 uniform sampler2D texture;
@@ -285,8 +337,7 @@ uniform sampler2D texture;
 varying vec4 position;
 varying vec3 normal;
 
-void main (void)
-{
+void main (void) {
   vec4 color = texture2DProj(texture, gl_TexCoord[0]);
   vec3 light = normalize((gl_LightSource[0].position * position.w - gl_LightSource[0].position.w * position).xyz);
   vec3 fnormal = normalize(normal);
@@ -303,34 +354,56 @@ EOS
     end
 
     # 頂点シェーダを設定
-    vert_shader = glCreateShader(GL_VERTEX_SHADER)  # 1. シェーダオブジェクト作成
-    glShaderSource(vert_shader, vert_shader_src)    # 2. シェーダのソースを渡す
-    glCompileShader(vert_shader)                    # 3. シェーダをコンパイル
-
-    # 4. 正しくコンパイルできたか確認
-    compiled = glGetShaderiv(vert_shader, GL_COMPILE_STATUS)
-    abort "Error : Compile error in vertex shader" if compiled == GL_FALSE
+    vs = glCreateShader(GL_VERTEX_SHADER)  # 1. シェーダオブジェクト作成
+    unless $glbind
+      glShaderSource(vs, vs_src)           # 2. シェーダのソースを渡す
+      glCompileShader(vs)                  # 3. シェーダをコンパイル
+      compiled = glGetShaderiv(vs, GL_COMPILE_STATUS) # 4. 正しくコンパイルできたか確認
+      abort "Error : Compile error in vertex shader" if compiled == GL_FALSE
+    else
+      glShaderSource(vs, 1, [vs_src].pack('p'), [vs_src.size].pack('I'))
+      glCompileShader(vs)
+      compiled = ' ' * 4
+      glGetShaderiv(vs, GL_COMPILE_STATUS, compiled)
+      abort "Error : Compile error in vertex shader" if compiled == 0
+    end
 
     # フラグメントシェーダを設定
-    frag_shader = glCreateShader(GL_FRAGMENT_SHADER)  # 1.
-    glShaderSource(frag_shader, frag_shader_src)      # 2.
-    glCompileShader(frag_shader)                      # 3.
-    compiled = glGetShaderiv(frag_shader, GL_COMPILE_STATUS)  # 4.
-    abort "Error : Compile error in fragment shader" if compiled == GL_FALSE
+    fs = glCreateShader(GL_FRAGMENT_SHADER)  # 1.
+    unless $glbind
+      glShaderSource(fs, fs_src)             # 2.
+      glCompileShader(fs)                    # 3.
+      compiled = glGetShaderiv(fs, GL_COMPILE_STATUS)  # 4.
+      abort "Error : Compile error in fragment shader" if compiled == GL_FALSE
+    else
+      glShaderSource(fs, 1, [fs_src].pack('p'), [fs_src.size].pack('I'))
+      glCompileShader(fs)
+      compiled = ' ' * 4
+      glGetShaderiv(fs, GL_COMPILE_STATUS, compiled)
+      abort "Error : Compile error in fragment shader" if compiled == 0
+    end
 
-    @shader = glCreateProgram             # 5. プログラムオブジェクト作成
-    glAttachShader(@shader, vert_shader)  # 6. シェーダオブジェクトを登録
-    glAttachShader(@shader, frag_shader)
-    glLinkProgram(@shader)                # 7. シェーダプログラムをリンク
+    shader = glCreateProgram    # 5. プログラムオブジェクト作成
+    glAttachShader(shader, vs)  # 6. シェーダオブジェクトを登録
+    glAttachShader(shader, fs)
+    glLinkProgram(shader)       # 7. シェーダプログラムをリンク
 
     # 8. 正しくリンクできたか確認
-    linked = glGetProgramiv(@shader, GL_LINK_STATUS)
-    abort "Error : Linke error" if linked == GL_FALSE
+    unless $glbind
+      linked = glGetProgramiv(shader, GL_LINK_STATUS)
+      abort "Error : Linke error" if linked == GL_FALSE
+    else
+      linked = ' ' * 4
+      glGetProgramiv(shader, GL_LINK_STATUS, linked)
+      linked = linked.unpack('L')[0]
+      abort "Error : Linke error" if linked == 0
+    end
 
-    glUseProgram(@shader)                 # 9. シェーダプログラムを適用
+    glUseProgram(shader)  # 9. シェーダプログラムを適用
+    glDeleteShader(vs)    # 10. 設定が終わったので後始末
+    glDeleteShader(fs)
 
-    glDeleteShader(vert_shader)           # 10. 設定が終わったので後始末
-    glDeleteShader(frag_shader)
+    return shader
   end
 
   # OpenGL関係の処理
@@ -350,10 +423,18 @@ EOS
 
     glEnable(GL_LIGHTING)      # 光源の有効化
     glEnable(GL_LIGHT0)        # 0番目のライトを有効化
-    glLightfv(GL_LIGHT0, GL_POSITION, LIGHT_POS)  # 光源の位置
-    glLightfv(GL_LIGHT0, GL_AMBIENT, LIGHT_AMB)   # 環境光
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIF)   # 拡散光
-    glLightfv(GL_LIGHT0, GL_SPECULAR, LIGHT_SPE)  # 鏡面光
+
+    unless $glbind
+      glLightfv(GL_LIGHT0, GL_POSITION, LIGHT_POS)  # 光源の位置
+      glLightfv(GL_LIGHT0, GL_AMBIENT, LIGHT_AMB)   # 環境光
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIF)   # 拡散光
+      glLightfv(GL_LIGHT0, GL_SPECULAR, LIGHT_SPE)  # 鏡面光
+    else
+      glLightfv(GL_LIGHT0, GL_POSITION, LIGHT_POS_PACK)
+      glLightfv(GL_LIGHT0, GL_AMBIENT, LIGHT_AMB_PACK)
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, LIGHT_DIF_PACK)
+      glLightfv(GL_LIGHT0, GL_SPECULAR, LIGHT_SPE_PACK)
+    end
 
     glMatrixMode(GL_PROJECTION)  # 透視投影の設定
     glLoadIdentity               # 変換行列の初期化
@@ -361,66 +442,79 @@ EOS
 
     glMatrixMode(GL_MODELVIEW)  # モデルビュー変換の指定
     glLoadIdentity              # 変換行列の初期化
-    glTranslate(@pos[:x], @pos[:y], @pos[:z])  # 平行移動
-    glRotate(@rot_x, 1.0, 0.0, 0.0)            # 回転
-    glRotate(@rot_y, 0.0, 1.0, 0.0)            # 回転
+
+    unless $glbind
+      glTranslate(@pos[:x], @pos[:y], @pos[:z])  # 平行移動
+      glRotate(@rot_x, 1.0, 0.0, 0.0)            # x 回転
+      glRotate(@rot_y, 0.0, 1.0, 0.0)            # y 回転
+    else
+      glTranslatef(@pos[:x], @pos[:y], @pos[:z])
+      glRotatef(@rot_x, 1.0, 0.0, 0.0)
+      glRotatef(@rot_y, 0.0, 1.0, 0.0)
+    end
 
     # 材質を設定
-    diffuse = [0.5, 0.5, 0.5, 1.0]
-    specular = [0.3, 0.3, 0.3, 1.0]
-    shininess = 100.0
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, diffuse)
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, specular)
-    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess)
+    unless $glbind
+      glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, DIFFUSE)
+      glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, SPECULAR)
+      glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, SHININESS)
+    else
+      glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, DIFFUSE_PACK)
+      glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, SPECULAR_PACK)
+      glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, SHININESS)
+    end
 
     # 四角形を描画
     # ----------------------------------------
-
-    glUseProgram(@shader)    # 利用するシェーダを指定
-
-    glEnableClientState(GL_VERTEX_ARRAY)         # 頂点配列を有効化
-    glEnableClientState(GL_NORMAL_ARRAY)         # 法線配列を有効化
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY)  # 法線配列を有効化
-
-    glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # 使用バッファを指定
 
     # float型(C言語)のバイト数を求める。…他にいい方法があるのでは？
     nf = [0.0].pack("f*").size
     stride = 8 * nf
 
+    glUseProgram(@shaders[@shader_kind])    # 利用するシェーダを指定
+
+    glEnableClientState(GL_VERTEX_ARRAY)         # 頂点配列を有効化
+    glEnableClientState(GL_NORMAL_ARRAY)         # 法線配列を有効化
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY)  # 法線配列を有効化
+
+    unless $glbind
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers[0])  # 使用バッファを指定
+    else
+      glBindBuffer(GL_ARRAY_BUFFER, @buffers.unpack('L')[0])
+    end
+
     # 頂点配列を指定
-    glVertexPointer(
-                    3,         # 1頂点に値をいくつ使うか。x,y,zなら3
+    glVertexPointer(3,         # 1頂点に値をいくつ使うか。x,y,zなら3
                     GL_FLOAT,  # 値の型
                     stride,    # stride. データの間隔
                     0          # バッファオフセット
-                    )
+                   )
 
-    # 法線配列を指定
-    # 法線は必ずx,y,zを渡すのでサイズ指定は不要
-    glNormalPointer(
-                    GL_FLOAT,  # 値の型
+    # 法線配列を指定. 法線は必ずx,y,zを渡すのでサイズ指定は不要
+    glNormalPointer(GL_FLOAT,  # 値の型
                     stride,    # stride. データの間隔
                     3 * nf     # バッファオフセット
-                    )
+                   )
 
     # uv配列を指定
-    glTexCoordPointer(
-                    2,         # 1頂点に値をいくつ使うか。u,vなら2
-                    GL_FLOAT,  # 値の型
-                    stride,    # stride. データの間隔
-                    6 * nf     # バッファオフセット
-                    )
+    glTexCoordPointer(2,         # 1頂点に値をいくつ使うか。u,vなら2
+                      GL_FLOAT,  # 値の型
+                      stride,    # stride. データの間隔
+                      6 * nf     # バッファオフセット
+                     )
 
     glEnable(GL_TEXTURE_2D)                          # テクスチャ有効化
     glBindTexture(GL_TEXTURE_2D, @texinfo.tex_name)  # テクスチャ割り当て
 
+    # テクスチャの補間を指定
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+
     # 描画
-    glDrawArrays(
-                 GL_QUADS,  # プリミティブ種類
+    glDrawArrays(GL_QUADS,  # プリミティブ種類
                  0,         # 開始インデックス
                  4          # 頂点数
-                 )
+                )
 
     glDisable(GL_TEXTURE_2D)               # テクスチャ無効化
 
@@ -430,30 +524,33 @@ EOS
   end
 end
 
-# メインクラス
+# Gosu main window class
 class MyWindow < Gosu::Window
 
-  # 初期化
   def initialize
     super WIDTH, HEIGHT
     self.caption = "Ruby + Gosu + OpenGL, programmable shader + VBO"
     @gl_obj = GlObj.new(0.0, 0.0, -2.5)
   end
 
-  # 更新
   def update
     @gl_obj.update
   end
 
-  # 描画
   def draw
     z = 0
     @gl_obj.draw(z)
   end
 
   def button_down(id)
-    # ESCが押されたら終了
-    close if id == Gosu::KbEscape
+    case id
+    when Gosu::KbEscape
+      close
+    when Gosu::KbRight
+      @gl_obj.inc_shader_kind
+    when Gosu::KbLeft
+      @gl_obj.dec_shader_kind
+    end
   end
 end
 
