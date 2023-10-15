@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/14 23:51:03 +0900>
+# Last updated: <2023/10/15 09:44:26 +0900>
 #
 # Gosu test. Open window only.
 #
@@ -23,7 +23,7 @@ class MyWindow < Gosu::Window
   end
   
   def button_down(id)
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 end
 

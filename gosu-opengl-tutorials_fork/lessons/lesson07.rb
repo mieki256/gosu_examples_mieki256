@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-# Last updated: <2019/03/20 07:47:03 +0900>
+# Last updated: <2023/10/15 10:09:41 +0900>
 #
 # Lesson 7 - Texture Filters, Lighting and Keyboard Control
 
@@ -100,12 +100,12 @@ class Window < Gosu::Window
   end
 
   def update
-    @z_depth -= 0.2 if button_down? Gosu::Button::KbPageUp
-    @z_depth += 0.2 if button_down? Gosu::Button::KbPageDown
-    @x_change -= 0.01 if button_down? Gosu::Button::KbUp
-    @x_change += 0.01 if button_down? Gosu::Button::KbDown
-    @y_change -= 0.01 if button_down? Gosu::Button::KbLeft
-    @y_change += 0.01 if button_down? Gosu::Button::KbRight
+    @z_depth -= 0.2 if button_down? Gosu::Button::KB_PAGE_UP
+    @z_depth += 0.2 if button_down? Gosu::Button::KB_PAGE_DOWN
+    @x_change -= 0.01 if button_down? Gosu::Button::KB_UP
+    @x_change += 0.01 if button_down? Gosu::Button::KB_DOWN
+    @y_change -= 0.01 if button_down? Gosu::Button::KB_LEFT
+    @y_change += 0.01 if button_down? Gosu::Button::KB_RIGHT
     @x_angle += @x_change
     @y_angle += @y_change
   end
@@ -218,12 +218,12 @@ class Window < Gosu::Window
 
   def button_down(id)
     case id
-    when Gosu::Button::KbEscape
+    when Gosu::Button::KB_ESCAPE
       close
-    when Gosu::Button::KbL
+    when Gosu::Button::KB_L
       # L key : switch light on or off
       @light_on = !@light_on
-    when Gosu::Button::KbF
+    when Gosu::Button::KB_F
       # F key : change filter
       change_filter!
     end

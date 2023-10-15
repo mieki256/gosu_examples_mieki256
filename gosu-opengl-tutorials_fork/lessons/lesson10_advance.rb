@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-# Last updated: <2019/03/20 23:51:09 +0900>
+# Last updated: <2023/10/15 10:11:02 +0900>
 #
 # Last updated: <2019/03/20 23:49:48 +0900>
 # This lesson wants to make sure that nehe/lesson10 is fully understood,
@@ -176,27 +176,27 @@ class Window < Gosu::Window
   end
 
   def update
-    @y_angle -= 1.5 if button_down? Gosu::Button::KbRight
-    @y_angle += 1.5 if button_down? Gosu::Button::KbLeft
+    @y_angle -= 1.5 if button_down? Gosu::Button::KB_RIGHT
+    @y_angle += 1.5 if button_down? Gosu::Button::KB_LEFT
 
-    if button_down?(Gosu::Button::KbUp)
+    if button_down?(Gosu::Button::KB_UP)
       @x_pos -= Math.sin(@y_angle * @degree_radian_conversion) * 0.05
       @look_up_or_down_pos -= Math.cos(@y_angle * @degree_radian_conversion) * 0.05
       @bouncing_angle > 359 ? @bouncing_angle = 0 : @bouncing_angle += 10
       @bouncing = Math.sin(@bouncing_angle * @degree_radian_conversion) / 20
     end
-    if button_down?(Gosu::Button::KbDown)
+    if button_down?(Gosu::Button::KB_DOWN)
       @x_pos += Math.sin(@y_angle * @degree_radian_conversion) * 0.05
       @look_up_or_down_pos += Math.cos(@y_angle * @degree_radian_conversion) * 0.05
       @bouncing_angle <= 1 ? @bouncing_angle = 359 : @bouncing_angle -= 10
       @bouncing = Math.sin(@bouncing_angle * @degree_radian_conversion) / 20
     end
-    @look_up_or_down -= 0.3 if button_down? Gosu::Button::KbPageUp
-    @look_up_or_down += 0.3 if button_down? Gosu::Button::KbPageDown
-    @y_pos -= 0.05 if button_down? Gosu::Button::KbW
-    @y_pos += 0.05 if button_down? Gosu::Button::KbS
-    @x_pos += 0.05 if button_down? Gosu::Button::KbD
-    @x_pos -= 0.05 if button_down? Gosu::Button::KbA
+    @look_up_or_down -= 0.3 if button_down? Gosu::Button::KB_PAGE_UP
+    @look_up_or_down += 0.3 if button_down? Gosu::Button::KB_PAGE_DOWN
+    @y_pos -= 0.05 if button_down? Gosu::Button::KB_W
+    @y_pos += 0.05 if button_down? Gosu::Button::KB_S
+    @x_pos += 0.05 if button_down? Gosu::Button::KB_D
+    @x_pos -= 0.05 if button_down? Gosu::Button::KB_A
   end
 
   def draw
@@ -267,13 +267,13 @@ class Window < Gosu::Window
 
   def button_down(id)
     case id
-    when Gosu::Button::KbEscape
+    when Gosu::Button::KB_ESCAPE
       close
-    when Gosu::Button::KbL
+    when Gosu::Button::KB_L
       @light_on = !@light_on
-    when Gosu::Button::KbF
+    when Gosu::Button::KB_F
       change_filter!
-    when Gosu::Button::KbB
+    when Gosu::Button::KB_B
       @blending = !@blending
     end
   end

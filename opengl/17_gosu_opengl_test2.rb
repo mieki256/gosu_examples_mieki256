@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/17 02:47:07 +0900>
+# Last updated: <2023/10/15 09:50:49 +0900>
 #
 # gosu + opengl の動作確認
 # gosu-examplesの opengl_integration.rb を弄って、
@@ -167,7 +167,7 @@ class MyWindow < Gosu::Window
   
   def button_down(id)
     # ESC : close window and exit.
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 end
 

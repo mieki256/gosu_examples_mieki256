@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-# Last updated: <2019/03/20 08:46:58 +0900>
+# Last updated: <2023/10/15 10:10:44 +0900>
 #
 # Lesson 10 - Loading and moving through 3D World
 
@@ -140,23 +140,23 @@ class Window < Gosu::Window
   end
 
   def update
-    @y_angle -= 1.5 if button_down? Gosu::Button::KbRight
-    @y_angle += 1.5 if button_down? Gosu::Button::KbLeft
+    @y_angle -= 1.5 if button_down? Gosu::Button::KB_RIGHT
+    @y_angle += 1.5 if button_down? Gosu::Button::KB_LEFT
 
-    if button_down?(Gosu::Button::KbUp)
+    if button_down?(Gosu::Button::KB_UP)
       @x_pos -= Math.sin(@y_angle * @degree_radian_conversion) * 0.05
       @look_up_or_down_pos -= Math.cos(@y_angle * @degree_radian_conversion) * 0.05
       @bouncing_angle > 359 ? @bouncing_angle = 0 : @bouncing_angle += 10 # bouncing and bouncing angle gives illusion of walking
       @bouncing = Math.sin(@bouncing_angle * @degree_radian_conversion) / 20 # use sinusoid for bouncing
     end
-    if button_down?(Gosu::Button::KbDown)
+    if button_down?(Gosu::Button::KB_DOWN)
       @x_pos += Math.sin(@y_angle * @degree_radian_conversion) * 0.05
       @look_up_or_down_pos += Math.cos(@y_angle * @degree_radian_conversion) * 0.05
       @bouncing_angle <= 1 ? @bouncing_angle = 359 : @bouncing_angle -= 10 # bouncing and bouncing angle gives illusion of walking
       @bouncing = Math.sin(@bouncing_angle * @degree_radian_conversion) / 20 # use sinusoid for bouncing
     end
-    @look_up_or_down -= 0.2 if button_down? Gosu::Button::KbPageUp
-    @look_up_or_down += 0.2 if button_down? Gosu::Button::KbPageDown
+    @look_up_or_down -= 0.2 if button_down? Gosu::Button::KB_PAGE_UP
+    @look_up_or_down += 0.2 if button_down? Gosu::Button::KB_PAGE_DOWN
   end
 
   def draw
@@ -239,13 +239,13 @@ class Window < Gosu::Window
 
   def button_down(id)
     case id
-    when Gosu::Button::KbEscape
+    when Gosu::Button::KB_ESCAPE
       close
-    when Gosu::Button::KbL
+    when Gosu::Button::KB_L
       @light_on = !@light_on
-    when Gosu::Button::KbF
+    when Gosu::Button::KB_F
       change_filter!
-    when Gosu::Button::KbB
+    when Gosu::Button::KB_B
       @blending = !@blending
     end
   end

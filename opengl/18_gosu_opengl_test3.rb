@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/19 22:54:19 +0900>
+# Last updated: <2023/10/15 10:00:14 +0900>
 #
 # gosu + opengl の動作確認
 # gosu-examplesの opengl_integration.rb を弄って OpenGL絡みの部分だけを列挙
@@ -289,15 +289,15 @@ class MyWindow < Gosu::Window
 
   def button_down(id)
     # ESC : close window and exit.
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 
   def button_up(id)
     # Modle change : LEFT, RIGHT
     case id
-    when Gosu::KbRight
+    when Gosu::KB_RIGHT
       @kind = (@kind + 1) % @gl_objs.size
-    when Gosu::KbLeft
+    when Gosu::KB_LEFT
       @kind = (@kind - 1 + @gl_objs.size) % @gl_objs.size
     end
   end

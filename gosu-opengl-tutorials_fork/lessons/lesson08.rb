@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-# Last updated: <2019/03/20 08:18:26 +0900>
+# Last updated: <2023/10/15 10:10:05 +0900>
 #
 # Lesson 8 - Texture blending, transparency
 # push L,F,B key
@@ -77,12 +77,12 @@ class Window < Gosu::Window
   end
 
   def update
-    @z_depth -= 0.2 if button_down? Gosu::Button::KbPageUp
-    @z_depth += 0.2 if button_down? Gosu::Button::KbPageDown
-    @x_change -= 0.01 if button_down? Gosu::Button::KbUp
-    @x_change += 0.01 if button_down? Gosu::Button::KbDown
-    @y_change -= 0.01 if button_down? Gosu::Button::KbLeft
-    @y_change += 0.01 if button_down? Gosu::Button::KbRight
+    @z_depth -= 0.2 if button_down? Gosu::Button::KB_PAGE_UP
+    @z_depth += 0.2 if button_down? Gosu::Button::KB_PAGE_DOWN
+    @x_change -= 0.01 if button_down? Gosu::Button::KB_UP
+    @x_change += 0.01 if button_down? Gosu::Button::KB_DOWN
+    @y_change -= 0.01 if button_down? Gosu::Button::KB_LEFT
+    @y_change += 0.01 if button_down? Gosu::Button::KB_RIGHT
     @x_angle += @x_change
     @y_angle += @y_change
   end
@@ -196,13 +196,13 @@ class Window < Gosu::Window
 
   def button_down(id)
     case id
-    when Gosu::Button::KbEscape
+    when Gosu::Button::KB_ESCAPE
       close
-    when Gosu::Button::KbL
+    when Gosu::Button::KB_L
       @light_on = !@light_on
-    when Gosu::Button::KbF
+    when Gosu::Button::KB_F
       change_filter!
-    when Gosu::Button::KbB
+    when Gosu::Button::KB_B
       @blending = !@blending
     end
   end

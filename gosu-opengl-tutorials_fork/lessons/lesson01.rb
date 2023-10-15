@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-# Last updated: <2019/03/20 09:38:09 +0900>
+# Last updated: <2023/10/15 09:47:57 +0900>
 #
 # Lesson 1
 
@@ -56,7 +56,7 @@ class Window < Gosu::Window
   end
 
   def button_down(id)
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 end
 

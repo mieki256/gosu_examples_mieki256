@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/14 21:10:40 +0900>
+# Last updated: <2023/10/15 09:58:42 +0900>
 #
 # Gosu test. Check keyboard and gamepad.
 #
@@ -40,27 +40,27 @@ class MyWindow < Gosu::Window
     spd = 6
 
     # push LEFT ?
-    if button_down?(Gosu::KbLeft) or button_down?(Gosu::GpLeft)
+    if button_down?(Gosu::KB_LEFT) or button_down?(Gosu::GP_LEFT)
       @x -= spd
     end
 
     # push RIGHT ?
-    if button_down?(Gosu::KbRight) or button_down?(Gosu::GpRight)
+    if button_down?(Gosu::KB_RIGHT) or button_down?(Gosu::GP_RIGHT)
       @x += spd
     end
 
     # push UP ?
-    if button_down?(Gosu::KbUp) or button_down?(Gosu::GpUp)
+    if button_down?(Gosu::KB_UP) or button_down?(Gosu::GP_UP)
       @y -= spd
     end
 
     # push DOWN ?
-    if button_down?(Gosu::KbDown) or button_down?(Gosu::GpDown)
+    if button_down?(Gosu::KB_DOWN) or button_down?(Gosu::GP_DOWN)
       @y += spd
     end
 
     # push Z or buttn1 ?
-    if button_down?(Gosu::KbZ) or button_down?(Gosu::GpButton0)
+    if button_down?(Gosu::KB_Z) or button_down?(Gosu::GP_BUTTON_0)
       @scale += (8.0 - @scale) * 0.2
     else
       @scale += (1.0 - @scale) * 0.4
@@ -76,7 +76,7 @@ class MyWindow < Gosu::Window
   # check keyboard
   def button_down(id)
     # ESC : close window and exit
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 end
 

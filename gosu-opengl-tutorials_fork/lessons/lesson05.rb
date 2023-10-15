@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-# Last updated: <2019/03/20 03:44:20 +0900>
+# Last updated: <2023/10/15 09:48:26 +0900>
 #
 # Lesson 5 - 3D Shapes
 
@@ -73,7 +73,7 @@ class Window < Gosu::Window
   end
 
   def button_down(id)
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 end
 

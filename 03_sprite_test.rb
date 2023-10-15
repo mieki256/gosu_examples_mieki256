@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/14 23:57:24 +0900>
+# Last updated: <2023/10/15 09:45:42 +0900>
 #
 # Gosu test. Draw Sprites.
 #
@@ -86,7 +86,7 @@ class MyWindow < Gosu::Window
   def button_down(id)
     # ESC : close window and exit.
     # close window by call Gosu::Window.close()
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 end
 

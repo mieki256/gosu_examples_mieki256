@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/18 21:02:53 +0900>
+# Last updated: <2023/10/15 09:59:59 +0900>
 #
 # Ruby + gosu + opengl の動作確認
 # gosu-examples の opengl_integration.rb を弄ってOpenGL絡みの部分だけを列挙
@@ -544,11 +544,11 @@ class MyWindow < Gosu::Window
 
   def button_down(id)
     case id
-    when Gosu::KbEscape
+    when Gosu::KB_ESCAPE
       close
-    when Gosu::KbRight
+    when Gosu::KB_RIGHT
       @gl_obj.inc_shader_kind
-    when Gosu::KbLeft
+    when Gosu::KB_LEFT
       @gl_obj.dec_shader_kind
     end
   end

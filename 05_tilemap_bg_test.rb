@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/15 00:04:42 +0900>
+# Last updated: <2023/10/15 09:46:20 +0900>
 #
 # Gosu test. Draw time map.
 #
@@ -107,7 +107,7 @@ class MyWindow < Gosu::Window
   # check keyboard
   def button_down(id)
     # ESC : close window and exit
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 end
 

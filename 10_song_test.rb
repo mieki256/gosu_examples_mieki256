@@ -1,6 +1,6 @@
 #!ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/14 21:36:34 +0900>
+# Last updated: <2023/10/15 10:07:22 +0900>
 #
 # Gosu test. Play BGM (.ogg)
 #
@@ -49,14 +49,14 @@ class MyWindow < Gosu::Window
   end
 
   def button_down(id)
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 
   # Called when the key is released.
   def button_up(id)
-    @bgm.play(true) if id == Gosu::KbA  # play (loop enabled)
-    @bgm.stop if id == Gosu::KbZ  # stop
-    @bgm.pause if id == Gosu::KbX  # pause
+    @bgm.play(true) if id == Gosu::KB_A  # play (loop enabled)
+    @bgm.stop if id == Gosu::KB_Z        # stop
+    @bgm.pause if id == Gosu::KB_X       # pause
   end
 end
 

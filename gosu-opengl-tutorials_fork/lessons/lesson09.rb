@@ -1,5 +1,5 @@
 #! /usr/bin/env ruby
-# Last updated: <2019/03/20 08:32:17 +0900>
+# Last updated: <2023/10/15 10:10:17 +0900>
 #
 # Lesson 9 - Moving bitmaps in 3D space
 
@@ -55,10 +55,10 @@ class Window < Gosu::Window
   end
 
   def update
-    @zoom -= 0.2 if button_down? Gosu::Button::KbPageUp
-    @zoom += 0.2 if button_down? Gosu::Button::KbPageDown
-    @tilt -= 0.5 if button_down? Gosu::Button::KbUp
-    @tilt += 0.5 if button_down? Gosu::Button::KbDown
+    @zoom -= 0.2 if button_down? Gosu::Button::KB_PAGE_UP
+    @zoom += 0.2 if button_down? Gosu::Button::KB_PAGE_DOWN
+    @tilt -= 0.5 if button_down? Gosu::Button::KB_UP
+    @tilt += 0.5 if button_down? Gosu::Button::KB_DOWN
     @spin += 0.01
   end
 
@@ -139,9 +139,9 @@ class Window < Gosu::Window
 
   def button_down(id)
     case id
-    when Gosu::Button::KbEscape
+    when Gosu::Button::KB_ESCAPE
       close
-    when Gosu::Button::KbT
+    when Gosu::Button::KB_T
       @twinkle_on = !@twinkle_on
     end
   end

@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/14 22:09:41 +0900>
+# Last updated: <2023/10/15 09:47:44 +0900>
 #
 # Gosu test. play wav or ogg.
 #
@@ -78,7 +78,7 @@ class MyWindow < Gosu::Window
   end
 
   def button_down(id)
-    if id == Gosu::KbEscape  # push ESC
+    if id == Gosu::KB_ESCAPE # push ESC
       # @se_all_stop = true  # SE all stop
       @close_req = 30
     end

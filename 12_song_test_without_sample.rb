@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/14 21:54:46 +0900>
+# Last updated: <2023/10/15 10:08:16 +0900>
 #
 # Gosu test. Play BGM (.ogg)
 # An example using the Sample class without using the Song class.
@@ -43,17 +43,17 @@ class MyWindow < Gosu::Window
 
   # Called when a key is pressed.
   def button_down(id)
-    if id == Gosu::KbEscape
+    if id == Gosu::KB_ESCAPE
       close
-    elsif id == Gosu::KbA
+    elsif id == Gosu::KB_A
       if @bgm_si == nil or !@bgm_si.playing?
         @bgm_si = @bgm.play(1, 1, true)  # play (loop enabled)
       end
-    elsif id == Gosu::KbZ
+    elsif id == Gosu::KB_Z
       if @bgm_si
         @bgm_si.stop  # stop
       end
-    elsif id == Gosu::KbP
+    elsif id == Gosu::KB_P
       if @bgm_si
         if @bgm_si.paused?
           @bgm_si.resume # resume

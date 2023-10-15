@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/14 23:59:00 +0900>
+# Last updated: <2023/10/15 09:46:01 +0900>
 #
 # Gosu test. Get Framerate.
 #
@@ -52,7 +52,7 @@ class MyWindow < Gosu::Window
   # check keyboard
   def button_down(id)
     # ESC : cloase window and exit.
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 end
 

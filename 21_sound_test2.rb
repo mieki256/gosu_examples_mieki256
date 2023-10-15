@@ -1,6 +1,6 @@
 #! /usr/bin/env ruby
 # -*- mode: ruby; coding: utf-8 -*-
-# Last updated: <2019/03/14 22:03:48 +0900>
+# Last updated: <2023/10/15 10:09:18 +0900>
 #
 # Gosu test. play wav or ogg.
 # Try changing the volume and playback speed.
@@ -59,28 +59,28 @@ class MyWindow < Gosu::Window
   end
 
   def button_down(id)
-    close if id == Gosu::KbEscape
+    close if id == Gosu::KB_ESCAPE
   end
 
   def button_up(id)
-    @si = @sound.play if id == Gosu::KbA  # normal play
-    @si = @sound.play(0.2, 1, false) if id == Gosu::KbB  # small volume
-    @si = @sound.play(1, 0.5, false) if id == Gosu::KbC  # slow
-    @si = @sound.play(1, 2.0, false) if id == Gosu::KbD  # fast
-    @si = @sound.play(1, 1, true) if id == Gosu::KbE  # loop
+    @si = @sound.play if id == Gosu::KB_A  # normal play
+    @si = @sound.play(0.2, 1, false) if id == Gosu::KB_B  # small volume
+    @si = @sound.play(1, 0.5, false) if id == Gosu::KB_C  # slow
+    @si = @sound.play(1, 2.0, false) if id == Gosu::KB_D  # fast
+    @si = @sound.play(1, 1, true) if id == Gosu::KB_E  # loop
 
     if @si
-      if id == Gosu::KbZ
+      if id == Gosu::KB_Z
         if @si.playing?
           @si.stop
         end
-      elsif id == Gosu::KbP
+      elsif id == Gosu::KB_P
         if @si.paused?
           @si.resume
         elsif @si.playing?
           @si.pause
         end
-      elsif id == Gosu::KbV
+      elsif id == Gosu::KB_V
         if @si.playing?
           @si.volume = 0
         end
